@@ -183,34 +183,48 @@ const Weather = (function () {
     }
   }
 
-  /* ---------- 雨带播放器: 按帧轮播 L.tileLayer ----------
-   * 返回 { stop, current }; 播放期间自动切换可见瓦片层 */
+  /* ---------- 雨带播放器: 按帧轮播 MapLibre raster source ----------
+   * 复用单个 'rain-source' raster source + 'rain-layer' 图层,
+   * 每帧只调用 source.setTiles([url]) 切换瓦片模板, 无需反复建图层。
+   * 返回 { stop, current }; 函数签名保持 (map, frames, intervalMs) 不变。 */
   function playRainRadar(map, frames, intervalMs) {
     if (!map || !frames || !frames.length) return null;
-    const layers = frames.map((f) => L.tileLayer(f.url, {
-      opacity: 0.65,
-      zIndex: 700, // 显示在轨迹/缓冲区之上
-      attribution: '© RainViewer'
-    }));
-    let idx = 0, timer = null;
-
-    function render() {
-      layers.forEach((l, k) => {
-        if (k === idx) { if (!map.hasLayer(l)) l.addTo(map); }
-        else if (map.hasLayer(l)) map.removeLayer(l);
-      });
+    const SOURCE = 'rain-source';
+    const LAYER = 'rain-layer';
+    try {
+      if (!map.getSource(SOURCE)) {
+        map.addSource(SOURCE, { type: 'raster', tiles: [frames[0].url], tileSize: 256 });
+      }
+      if (!map.getLayer(LAYER)) {
+        map.addLayer({
+          id: LAYER,
+          type: 'raster',
+          source: SOURCE,
+          paint: { 'raster-opacity': 0.65 } // 半透明, 显示在轨迹/缓冲区之上
+        });
+      }
+    } catch (e) {
+      return null; // 地图未就绪等情况 → 播放失败, 由调用方降级
     }
 
-    render();
+    let idx = 0, timer = null;
+
+    function show(i) {
+      const s = map.getSource(SOURCE);
+      if (s && typeof s.setTiles === 'function') s.setTiles([frames[i].url]);
+      if (map.getLayer(LAYER)) map.setLayoutProperty(LAYER, 'visibility', 'visible');
+    }
+
+    show(0);
     timer = setInterval(() => {
-      idx = (idx + 1) % layers.length;
-      render();
+      idx = (idx + 1) % frames.length;
+      show(idx);
     }, intervalMs || 600);
 
     return {
       stop() {
         if (timer) { clearInterval(timer); timer = null; }
-        layers.forEach((l) => { if (map.hasLayer(l)) map.removeLayer(l); });
+        if (map.getLayer(LAYER)) map.setLayoutProperty(LAYER, 'visibility', 'none');
       },
       current() { return frames[idx]; }
     };

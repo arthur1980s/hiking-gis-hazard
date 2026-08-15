@@ -7,6 +7,8 @@
  * 所有网络请求带 8s 超时 (AbortController), 失败自动优雅降级,
  * 绝不让页面卡死; 降级时返回 status 标记, 由 UI 显示提示。
  * 依赖: TrailGeo (geo.js)
+ * 注意: GIBS 瓦片在此只返回 URL 模板字符串(不依赖具体地图引擎),
+ *       由 app.js 负责用 MapLibre 创建 raster source/layer。
  * ============================================================ */
 
 /* 可选的 NASA FIRMS API Key (留空则仅使用 GIBS 瓦片, 无需 Key)
@@ -77,27 +79,23 @@ const Hazards = (function () {
 
   /* ============================================================
    * 2. 山火:
-   *    a) NASA GIBS 卫星热异常瓦片图层 (无需 Key, 国内网络可能不可达,
+   *    a) NASA GIBS 卫星热异常瓦片 URL (无需 Key, 国内网络可能不可达,
    *       瓦片加载失败时该图层自动不显示, 不影响页面)
    *    b) NASA FIRMS 点数据 (需 API Key, 网络通常不通 → 自动跳过)
    * ============================================================ */
 
-  /* GIBS 热异常瓦片: 375m VIIRS 夜间/昼间火点 */
-  function gibsFireTileLayer() {
+  /* GIBS 热异常瓦片 URL 模板: 375m VIIRS 夜间/昼间火点
+   * 返回纯 URL 字符串(含 {z}/{y}/{x} 占位符), 由 app.js 建 MapLibre raster source。
+   * 注意: MapLibre 的 {x} 表示瓦片列、{y} 表示瓦片行, 该模板顺序即 WMTS 的
+   *       TileRow/TileCol, 语义正确, 与引擎无关。 */
+  function gibsFireTileUrl() {
     try {
-      if (typeof L === 'undefined') return null;
       // FIRMS 产品通常滞后约 1~2 天, 取昨天日期
       const d = new Date(Date.now() - 24 * 3600 * 1000);
       const dateStr = d.toISOString().slice(0, 10);
-      const url = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'
+      return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'
         + 'VIIRS_SNPP_Thermal_Anomalies_375m_Tiles/default/'
         + dateStr + '/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png';
-      return L.tileLayer(url, {
-        maxNativeZoom: 8, // 375m 分辨率到 zoom 8, 再高自动放大
-        maxZoom: 17,
-        opacity: 0.85,
-        attribution: '© NASA GIBS/FIRMS'
-      });
     } catch (e) {
       return null;
     }
@@ -137,16 +135,16 @@ const Hazards = (function () {
     }
   }
 
-  /* 山火总入口: 返回 GIBS 瓦片 + FIRMS 点 + 状态说明 */
+  /* 山火总入口: 返回 GIBS 瓦片 URL + FIRMS 点 + 状态说明 */
   async function fetchWildfires(lat, lon) {
-    const tileLayer = gibsFireTileLayer();       // 无需 Key 的瓦片层
+    const tileUrl = gibsFireTileUrl();              // 无需 Key 的瓦片 URL
     const points = await fetchFirmsPoints(lat, lon); // 需 Key 的点数据
     const note = points.length
       ? 'NASA FIRMS 卫星热点 ' + points.length + ' 处'
       : (getFirmsKey()
           ? 'NASA FIRMS 数据源不可达(超时/网络受限), 已降级: 山火仅显示 GIBS 卫星热异常瓦片(若未显示说明数据源不通)'
           : '未配置 NASA FIRMS API Key, 山火点数据不可用; 已叠加 GIBS 卫星热异常瓦片(无需 Key, 尽力而为)');
-    return { tileLayer, points, status: points.length ? 'ok' : 'degraded', message: note };
+    return { tileUrl, points, status: points.length ? 'ok' : 'degraded', message: note };
   }
 
   /* ============================================================

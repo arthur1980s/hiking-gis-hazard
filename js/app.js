@@ -1,7 +1,10 @@
 /* ============================================================
  * app.js — 应用主逻辑 (初始化 / 轨迹加载 / 灾害检测 / 风险面板 / 导出)
- * 依赖: Leaflet(L) + Turf(turf) + Chart.js(Chart) + html2canvas,
+ * 地图引擎: MapLibre GL JS 4.7.1 (maplibregl)
+ * 依赖: maplibregl + Turf(turf) + Chart.js(Chart) + html2canvas,
  *       TrailGeo(geo.js) + Hazards(hazards.js) + Weather(weather.js)
+ * 注意: MapLibre 坐标顺序为 [lng, lat] (与 Leaflet 的 [lat, lng] 相反),
+ *       轨迹点数组统一为 [lat, lng, ele] (TrailGeo 约定)。
  * ============================================================ */
 (function () {
   'use strict';
@@ -14,68 +17,151 @@
     trailGeoJSON: null,     // 轨迹 FeatureCollection
     lineCoords: null,       // [[lng,lat,ele?],...]
     bufferGeoJSON: null,    // 缓冲区 Feature
+    bufferLabel: null,      // 缓冲区标签 DOM Marker
     chart: null,            // Chart.js 实例
-    markers: { fires: [], quakes: [] },
     layers: { fires: true, quakes: true, buffer: true, contour: false, rain: false },
     quakeData: { items: [], status: 'pending' },
-    fireData: { points: [], status: 'pending', tileLayer: null },
+    fireData: { points: [], status: 'pending', tileUrl: null },
     weatherData: null,
     hazardsAlerts: [],
     rainFrames: null,       // RainViewer 帧列表
     rainChecked: false,     // 雨带是否已尝试获取
     rainPlayer: null,       // 雨带播放器句柄
-    contourLayer: null,
     detecting: false,
     toastTimer: null
   };
 
   /* ============================================================
-   * 2. 地图初始化
+   * 2. 地图初始化 (MapLibre)
    * ============================================================ */
-  const map = L.map('map', { center: [27.52, 114.18], zoom: 12, zoomControl: true });
+  const map = new maplibregl.Map({
+    container: 'map',
+    // 内联 style v8: 预定义三种底图 raster source + 三个底图图层(按需切换 visibility)
+    style: {
+      version: 8,
+      sources: {
+        // 注意: MapLibre 不支持 Leaflet 的 {s} 子域占位符, 直接写死子域
+        'opentopomap': {
+          type: 'raster',
+          tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          maxzoom: 17, // 超过此级别自动放大最后一级瓦片(等价 Leaflet maxZoom 行为)
+          attribution: '© OpenTopoMap (CC-BY-SA)'
+        },
+        'esri': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          maxzoom: 18,
+          attribution: '© Esri World Imagery'
+        },
+        'cartodb': {
+          type: 'raster',
+          tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{ratio}.png'], // {ratio}→@2x (高分屏)
+          tileSize: 256,
+          maxzoom: 19,
+          attribution: '© CARTO © OSM'
+        }
+      },
+      layers: [
+        { id: 'basemap-topo', type: 'raster', source: 'opentopomap', minzoom: 0, maxzoom: 22 },
+        { id: 'basemap-satellite', type: 'raster', source: 'esri', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
+        { id: 'basemap-dark', type: 'raster', source: 'cartodb', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } }
+      ]
+    },
+    center: [114.18, 27.52], // [lng, lat]
+    zoom: 12,
+    attributionControl: true
+  });
 
-  // 三种底图
-  const basemaps = {
-    topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-      maxZoom: 17, attribution: '© OpenTopoMap (CC-BY-SA)'
-    }),
-    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 18, attribution: '© Esri World Imagery'
-    }),
-    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19, attribution: '© CARTO © OSM'
-    })
-  };
-  let currentBasemap = 'topo';
-  basemaps.topo.addTo(map);
+  // 导航控件(右上角)
+  map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-  // 图层组: 轨迹/缓冲区/山火/地震/雨带/景点
-  const layerGroups = {
-    trail: L.layerGroup().addTo(map),
-    buffer: L.layerGroup().addTo(map),
-    fires: L.layerGroup().addTo(map),
-    quakes: L.layerGroup().addTo(map),
-    rain: L.layerGroup().addTo(map),
-    scenic: L.layerGroup().addTo(map)
-  };
-
-  /* 地图状态栏: 鼠标坐标 + 缩放级别 */
+  /* 地图状态栏: 鼠标坐标 + 缩放级别 (MapLibre 事件对象用 e.lngLat) */
   map.on('mousemove', (e) => {
     document.getElementById('mapStatusbar').textContent =
-      '📍 ' + e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5) +
-      ' · Zoom ' + map.getZoom();
+      '📍 ' + e.lngLat.lat.toFixed(5) + ', ' + e.lngLat.lng.toFixed(5) +
+      ' · Zoom ' + map.getZoom().toFixed(1);
   });
 
   /* ============================================================
-   * 3. 控件: 底图切换 + 图层开关
+   * 3. 图层工具函数 (MapLibre source/layer 管理)
    * ============================================================ */
+
+  /* 自定义图层顺序(自底向上): 底图 < contour < buffer < gibs-fires < fires < quakes < trail < rain */
+  const LAYER_ORDER = ['contour', 'buffer', 'gibs-fires', 'fires', 'quakes', 'trail', 'rain-layer'];
+
+  /* 按固定顺序插入图层: 插到 LAYER_ORDER 中下一个已存在图层之下, 保证叠放层级稳定 */
+  function addLayerOrdered(layer) {
+    const idx = LAYER_ORDER.indexOf(layer.id);
+    if (idx === -1) { map.addLayer(layer); return; }
+    for (let i = idx + 1; i < LAYER_ORDER.length; i++) {
+      if (map.getLayer(LAYER_ORDER[i])) { map.addLayer(layer, LAYER_ORDER[i]); return; }
+    }
+    map.addLayer(layer);
+  }
+
+  /* GeoJSON source + 图层的一键重建(先删 layer 再删 source, 避免同 id 冲突报错) */
+  function setGeoJSONLayer(id, data, layerDef) {
+    if (map.getLayer(id)) map.removeLayer(id);
+    if (map.getSource(id)) map.removeSource(id);
+    map.addSource(id, { type: 'geojson', data: data });
+    addLayerOrdered(Object.assign({ id: id, source: id }, layerDef));
+  }
+
+  /* DOM 标记(起点/终点/景点/缓冲区标签): MapLibre 无 divIcon, 用 maplibregl.Marker 元素方案 */
+  const divMarkers = [];
+  function clearDivMarkers() {
+    divMarkers.forEach((m) => m.remove());
+    divMarkers.length = 0;
+  }
+  function addDivMarker(html, lngLat, opts) {
+    opts = opts || {};
+    const el = document.createElement('div');
+    el.className = 'ml-marker' + (opts.cls ? ' ' + opts.cls : '');
+    el.innerHTML = html;
+    const m = new maplibregl.Marker({ element: el, anchor: opts.anchor || 'center' })
+      .setLngLat(lngLat);
+    if (opts.popup) m.setPopup(new maplibregl.Popup({ offset: opts.offset || 18 }).setHTML(opts.popup));
+    m.addTo(map);
+    divMarkers.push(m);
+    return m;
+  }
+
+  /* 图层显隐映射: 一个按钮可能控制多个 MapLibre layer */
+  const LAYER_MAP = {
+    fires: ['gibs-fires', 'fires'],
+    quakes: ['quakes'],
+    buffer: ['buffer'],
+    contour: ['contour']
+  };
+  function applyLayerVisibility(type) {
+    const ids = LAYER_MAP[type];
+    if (!ids) return;
+    const vis = state.layers[type] ? 'visible' : 'none';
+    ids.forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis); });
+  }
+
+  /* 地图样式就绪后再执行图层操作(MapLibre 在样式加载完成前 addSource 会报错) */
+  function whenReady(fn) {
+    if (map.isStyleLoaded()) fn();
+    else map.once('load', fn);
+  }
+
+  /* ============================================================
+   * 4. 控件: 底图切换 + 图层开关
+   * ============================================================ */
+  const BASEMAP_LAYER = { topo: 'basemap-topo', satellite: 'basemap-satellite', dark: 'basemap-dark' };
+  let currentBasemap = 'topo';
+
   document.querySelectorAll('[data-basemap]').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('[data-basemap]').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       const key = btn.dataset.basemap;
-      Object.values(basemaps).forEach((l) => map.removeLayer(l));
-      basemaps[key].addTo(map);
+      // 切换三个预定义底图图层的 visibility, 不重建地图
+      Object.values(BASEMAP_LAYER).forEach((id) => map.setLayoutProperty(id, 'visibility', 'none'));
+      map.setLayoutProperty(BASEMAP_LAYER[key], 'visibility', 'visible');
       currentBasemap = key;
     });
   });
@@ -91,23 +177,24 @@
 
     if (type === 'rain') { handleRainToggle(); return; }
     if (type === 'contour') { handleContourToggle(); return; }
-
-    const group = layerGroups[type];
-    if (!group) return;
-    if (state.layers[type]) map.addLayer(group); else map.removeLayer(group);
+    applyLayerVisibility(type);
   }
 
   /* 等高线图层: OpenTopoMap 半透明叠加(任意底图上显示等高线/地形) */
   function handleContourToggle() {
     if (state.layers.contour) {
-      if (!state.contourLayer) {
-        state.contourLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-          maxZoom: 17, opacity: 0.55, attribution: '© OpenTopoMap'
+      if (!map.getLayer('contour')) {
+        map.addSource('contour', {
+          type: 'raster',
+          tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          maxzoom: 17
         });
+        addLayerOrdered({ id: 'contour', type: 'raster', source: 'contour', paint: { 'raster-opacity': 0.55 } });
       }
-      map.addLayer(state.contourLayer);
-    } else if (state.contourLayer) {
-      map.removeLayer(state.contourLayer);
+      map.setLayoutProperty('contour', 'visibility', 'visible');
+    } else if (map.getLayer('contour')) {
+      map.setLayoutProperty('contour', 'visibility', 'none');
     }
   }
 
@@ -156,7 +243,7 @@
   }
 
   /* ============================================================
-   * 4. 轨迹加载主流程
+   * 5. 轨迹加载主流程
    * ============================================================ */
   function loadWugongshan() {
     const pts = TrailGeo.generateWugongshanTrail();
@@ -176,33 +263,7 @@
     // 构建 GeoJSON 并保存
     const geojson = TrailGeo.buildLineGeoJSON(points);
     state.trailGeoJSON = geojson;
-    state.lineCoords = geojson.features[0].geometry.coordinates;
-
-    // 清空旧图层
-    Object.values(layerGroups).forEach((g) => g.clearLayers());
-    state.markers = { fires: [], quakes: [] };
-
-    // 绘制轨迹线
-    L.geoJSON(geojson, {
-      style: { color: '#e94560', weight: 4, opacity: 0.9 }
-    }).addTo(layerGroups.trail);
-
-    // 起点/终点标记
-    const c0 = points[0], cN = points[points.length - 1];
-    L.marker([c0[0], c0[1]], { icon: L.divIcon({ html: '🟢', className: 'marker-icon', iconSize: [22, 22] }) })
-      .addTo(layerGroups.trail).bindPopup('<strong>起点</strong><br><span style="font-size:11px;color:#999;">' + c0[0].toFixed(5) + ', ' + c0[1].toFixed(5) + '</span>');
-    L.marker([cN[0], cN[1]], { icon: L.divIcon({ html: '🔴', className: 'marker-icon', iconSize: [22, 22] }) })
-      .addTo(layerGroups.trail).bindPopup('<strong>终点</strong><br><span style="font-size:11px;color:#999;">' + cN[0].toFixed(5) + ', ' + cN[1].toFixed(5) + '</span>');
-
-    // 武功山景点标记
-    const spotIcon = L.divIcon({
-      html: '⛰️', className: 'spot-marker', iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -28]
-    });
-    TrailGeo.SCENIC_SPOTS.forEach((spot) => {
-      L.marker([spot.lat, spot.lng], { icon: spotIcon })
-        .addTo(layerGroups.scenic)
-        .bindPopup('<strong>' + spot.name + '</strong><br><span style="font-size:12px;color:#999;">' + spot.desc + '</span>');
-    });
+    state.lineCoords = geojson.features[0].geometry.coordinates; // [lng,lat,ele?]
 
     // 轨迹统计
     const stats = TrailGeo.computeStats(points);
@@ -213,15 +274,53 @@
     document.getElementById('statMinEle').textContent = stats.hasElevation ? Math.round(stats.minEle) + 'm' : '--';
     document.getElementById('statPoints').textContent = points.length;
 
-    // 缓冲区 + 视野适配
-    generateBuffer(getBufferRadius());
-    map.fitBounds(L.geoJSON(geojson).getBounds(), { padding: [60, 60], maxZoom: 13 });
-
-    // 海拔剖面图
+    // 海拔剖面图(与地图无关, 先画)
     drawElevationChart(points);
 
-    // 自动触发灾害检测(并发, 不阻塞页面)
-    runHazardChecks();
+    // 地图渲染 + 灾害检测(等样式就绪)
+    whenReady(() => {
+      // 清空旧图层(轨迹/缓冲区/灾害点/GIBS)与 DOM 标记
+      ['trail', 'buffer', 'fires', 'quakes', 'gibs-fires'].forEach((id) => {
+        if (map.getLayer(id)) map.removeLayer(id);
+        if (map.getSource(id)) map.removeSource(id);
+      });
+      clearDivMarkers();
+      state.bufferLabel = null;
+
+      // 绘制轨迹线 (line layer)
+      setGeoJSONLayer('trail', geojson, {
+        type: 'line',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#e94560', 'line-width': 4, 'line-opacity': 0.9 }
+      });
+
+      // 起点/终点 DOM 标记 + popup
+      const c0 = points[0], cN = points[points.length - 1];
+      addDivMarker('<span style="font-size:20px; line-height:1;">🟢</span>', [c0[1], c0[0]], {
+        popup: '<strong>起点</strong><br><span style="font-size:11px;color:#999;">' + c0[0].toFixed(5) + ', ' + c0[1].toFixed(5) + '</span>'
+      });
+      addDivMarker('<span style="font-size:20px; line-height:1;">🔴</span>', [cN[1], cN[0]], {
+        popup: '<strong>终点</strong><br><span style="font-size:11px;color:#999;">' + cN[0].toFixed(5) + ', ' + cN[1].toFixed(5) + '</span>'
+      });
+
+      // 武功山景点标记 (锚点底部, 模拟 Leaflet iconAnchor 效果)
+      TrailGeo.SCENIC_SPOTS.forEach((spot) => {
+        addDivMarker('<span style="font-size:22px; line-height:1;">⛰️</span>', [spot.lng, spot.lat], {
+          cls: 'spot-marker',
+          anchor: 'bottom',
+          offset: 26,
+          popup: '<strong>' + spot.name + '</strong><br><span style="font-size:12px;color:#999;">' + spot.desc + '</span>'
+        });
+      });
+
+      // 缓冲区 + 视野适配 (turf.bbox → [minLng,minLat,maxLng,maxLat])
+      generateBuffer(getBufferRadius());
+      const bbox = turf.bbox(geojson);
+      map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 60, maxZoom: 13 });
+
+      // 自动触发灾害检测(并发, 不阻塞页面)
+      runHazardChecks();
+    });
   }
 
   /* 读取监测半径(默认 10km) */
@@ -230,28 +329,36 @@
     return el ? parseFloat(el.value) || 10 : 10;
   }
 
-  /* ---------- 10km 缓冲区 ---------- */
+  /* ---------- 10km 缓冲区 (fill layer + DOM 标签) ---------- */
   function generateBuffer(km) {
-    layerGroups.buffer.clearLayers();
     if (!state.trailGeoJSON) return;
     try {
       const buffered = TrailGeo.makeBuffer(state.trailGeoJSON, km);
       state.bufferGeoJSON = buffered;
-      L.geoJSON(buffered, {
-        style: { color: '#f5c518', weight: 2, opacity: 0.6, fillColor: '#f5c518', fillOpacity: 0.08, dashArray: '6 4' }
-      }).addTo(layerGroups.buffer);
+      setGeoJSONLayer('buffer', buffered, {
+        type: 'fill',
+        paint: {
+          'fill-color': '#f5c518',
+          'fill-opacity': 0.08,
+          'fill-outline-color': '#f5c518'
+        }
+      });
+      // 缓冲区标签
+      if (state.bufferLabel) { state.bufferLabel.remove(); state.bufferLabel = null; }
       const c = turf.center(buffered);
-      L.marker([c.geometry.coordinates[1], c.geometry.coordinates[0]], {
-        icon: L.divIcon({ html: '📡 ' + km + 'km 监测区', className: 'buffer-label', iconSize: [120, 24] })
-      }).addTo(layerGroups.buffer);
-      if (!state.layers.buffer) map.removeLayer(layerGroups.buffer);
+      state.bufferLabel = addDivMarker(
+        '<span style="background:rgba(245,197,24,0.15);border:1px solid rgba(245,197,24,0.6);color:#f5c518;'
+        + 'padding:2px 8px;border-radius:20px;font-size:11px;white-space:nowrap;">📡 ' + km + 'km 监测区</span>',
+        [c.geometry.coordinates[0], c.geometry.coordinates[1]]
+      );
+      if (!state.layers.buffer) applyLayerVisibility('buffer');
     } catch (e) {
       console.warn('缓冲区生成失败:', e);
     }
   }
 
   /* ============================================================
-   * 5. 灾害检测: 并发抓取 地震 + 山火 + 微气象, 再碰撞计算
+   * 6. 灾害检测: 并发抓取 地震 + 山火 + 微气象, 再碰撞计算
    * ============================================================ */
   async function runHazardChecks() {
     if (!state.points || state.detecting) return;
@@ -272,15 +379,11 @@
     state.fireData = fireRes;
     state.weatherData = weatherRes;
 
-    // 渲染地震/山火标记
-    renderQuakeMarkers(quakeRes.items);
-    renderFireMarkers(fireRes.points);
-
-    // GIBS 卫星热异常瓦片加入山火图层组(尽力而为, 无需 Key)
-    if (fireRes.tileLayer) {
-      layerGroups.fires.addLayer(fireRes.tileLayer);
-      if (!state.layers.fires) map.removeLayer(layerGroups.fires);
-    }
+    // 渲染地震/山火图层 + GIBS 热异常瓦片
+    renderQuakeLayer(quakeRes.items);
+    renderFireLayer(fireRes.points);
+    renderGibsTiles();
+    applyLayerVisibility('fires'); // 同时控制 gibs-fires + fires 的显隐
 
     // 碰撞检测: 灾害点 vs 缓冲区
     state.hazardsAlerts = Hazards.checkIntersections(
@@ -308,55 +411,95 @@
     state.detecting = false;
   }
 
-  /* ---------- 地震标记 ---------- */
-  function renderQuakeMarkers(items) {
-    layerGroups.quakes.clearLayers();
-    state.markers.quakes = [];
-    items.forEach((q) => {
-      const inside = state.bufferGeoJSON && TrailGeo.pointInPolygon([q.lat, q.lng], state.bufferGeoJSON);
-      const m = L.circleMarker([q.lat, q.lng], {
-        radius: Math.min(6 + (q.mag || 3) * 1.6, 16),
-        color: '#ff6b6b', weight: 2, opacity: 0.9,
-        fillColor: '#ff6b6b', fillOpacity: inside ? 0.75 : 0.3
-      });
-      m.bindPopup('<strong>M' + (q.mag != null ? q.mag.toFixed(1) : '?') + ' 地震</strong><br>'
-        + (q.place || '未知位置') + '<br>深度 ' + (q.depth || 0).toFixed(1) + 'km'
-        + (inside ? '<br><span style="color:#e74c3c;">⚠️ 位于监测缓冲区' + getBufferRadius() + 'km内</span>' : '')
-        + '<br><span style="font-size:11px;color:#999;">' + new Date(q.time).toLocaleString('zh-CN') + '</span>');
-      m.addTo(layerGroups.quakes);
-      state.markers.quakes.push(m);
+  /* ---------- 地震图层 (circle layer + 点击 popup) ---------- */
+  function renderQuakeLayer(items) {
+    const features = items.map((q) => {
+      const inside = !!(state.bufferGeoJSON && TrailGeo.pointInPolygon([q.lat, q.lng], state.bufferGeoJSON));
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [q.lng, q.lat] },
+        properties: {
+          mag: q.mag || 0,
+          inside: inside,
+          popup: '<strong>M' + (q.mag != null ? q.mag.toFixed(1) : '?') + ' 地震</strong><br>'
+            + (q.place || '未知位置') + '<br>深度 ' + (q.depth || 0).toFixed(1) + 'km'
+            + (inside ? '<br><span style="color:#e74c3c;">⚠️ 位于监测缓冲区' + getBufferRadius() + 'km内</span>' : '')
+            + '<br><span style="font-size:11px;color:#999;">' + new Date(q.time).toLocaleString('zh-CN') + '</span>'
+        }
+      };
     });
-    if (state.layers.quakes) map.addLayer(layerGroups.quakes);
+    setGeoJSONLayer('quakes', { type: 'FeatureCollection', features: features }, {
+      type: 'circle',
+      paint: {
+        // 半径随震级插值, 透明度按是否在缓冲区内
+        'circle-radius': ['interpolate', ['linear'], ['get', 'mag'], 2.5, 9, 7, 17],
+        'circle-color': '#ff6b6b',
+        'circle-opacity': ['case', ['get', 'inside'], 0.8, 0.3],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff'
+      }
+    });
+    applyLayerVisibility('quakes');
   }
 
-  /* ---------- 山火标记 ---------- */
-  function renderFireMarkers(points) {
-    layerGroups.fires.clearLayers(); // 注意: 会清掉 GIBS 瓦片, 需重新添加
-    state.markers.fires = [];
-    points.forEach((f) => {
-      const inside = state.bufferGeoJSON && TrailGeo.pointInPolygon([f.lat, f.lng], state.bufferGeoJSON);
-      const m = L.circleMarker([f.lat, f.lng], {
-        radius: inside ? 13 : 9,
-        color: '#ff6b35', weight: 2, opacity: 0.9,
-        fillColor: '#ff6b35', fillOpacity: inside ? 0.75 : 0.35
-      });
-      m.bindPopup('<strong>🔥 卫星山火热点</strong><br>'
-        + 'FRP ' + Math.round(f.frp || 0) + ' MW'
-        + (inside ? '<br><span style="color:#e74c3c;">⚠️ 位于监测缓冲区' + getBufferRadius() + 'km内</span>' : '')
-        + '<br><span style="font-size:11px;color:#999;">' + (f.time || '') + '</span>');
-      m.addTo(layerGroups.fires);
-      state.markers.fires.push(m);
+  /* ---------- 山火图层 (circle layer + 点击 popup) ---------- */
+  function renderFireLayer(points) {
+    const features = points.map((f) => {
+      const inside = !!(state.bufferGeoJSON && TrailGeo.pointInPolygon([f.lat, f.lng], state.bufferGeoJSON));
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [f.lng, f.lat] },
+        properties: {
+          inside: inside,
+          popup: '<strong>🔥 卫星山火热点</strong><br>'
+            + 'FRP ' + Math.round(f.frp || 0) + ' MW'
+            + (inside ? '<br><span style="color:#e74c3c;">⚠️ 位于监测缓冲区' + getBufferRadius() + 'km内</span>' : '')
+            + '<br><span style="font-size:11px;color:#999;">' + (f.time || '') + '</span>'
+        }
+      };
     });
-    // 重新叠加 GIBS 瓦片(保持显示层级在点之下)
-    if (state.fireData.tileLayer) {
-      state.fireData.tileLayer.setZIndex && state.fireData.tileLayer.setZIndex(400);
-      layerGroups.fires.addLayer(state.fireData.tileLayer);
+    setGeoJSONLayer('fires', { type: 'FeatureCollection', features: features }, {
+      type: 'circle',
+      paint: {
+        'circle-radius': ['case', ['get', 'inside'], 13, 9],
+        'circle-color': '#ff6b35',
+        'circle-opacity': ['case', ['get', 'inside'], 0.8, 0.35],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff'
+      }
+    });
+  }
+
+  /* ---------- GIBS 卫星热异常瓦片 (raster source, 位于山火点层之下) ---------- */
+  function renderGibsTiles() {
+    const url = state.fireData.tileUrl;
+    if (!url) return;
+    if (!map.getSource('gibs-fires')) {
+      map.addSource('gibs-fires', { type: 'raster', tiles: [url], tileSize: 256, maxzoom: 8 });
     }
-    if (state.layers.fires) map.addLayer(layerGroups.fires);
+    if (!map.getLayer('gibs-fires')) {
+      addLayerOrdered({ id: 'gibs-fires', type: 'raster', source: 'gibs-fires', paint: { 'raster-opacity': 0.85 } });
+    }
+  }
+
+  /* ---------- 图层点击 popup: 注册一次即可(按 layerId 触发) ---------- */
+  function bindLayerPopups() {
+    ['fires', 'quakes'].forEach((layerId) => {
+      map.on('click', layerId, (e) => {
+        if (!e.features || !e.features.length) return;
+        const f = e.features[0];
+        new maplibregl.Popup({ offset: 14 })
+          .setLngLat(e.lngLat)
+          .setHTML(f.properties.popup || '')
+          .addTo(map);
+      });
+      map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+    });
   }
 
   /* ============================================================
-   * 6. 风险面板: 红黄绿灯 + 预警列表
+   * 7. 风险面板: 红黄绿灯 + 预警列表
    * ============================================================ */
   function updateRiskPanel() {
     const alerts = [];
@@ -451,7 +594,7 @@
   }
 
   /* ============================================================
-   * 7. 微气象面板 + 风寒计算器
+   * 8. 微气象面板 + 风寒计算器
    * ============================================================ */
   function updateWeatherPanel() {
     const w = state.weatherData;
@@ -494,7 +637,7 @@
   }
 
   /* ============================================================
-   * 8. 海拔剖面图 (Chart.js)
+   * 9. 海拔剖面图 (Chart.js)
    * ============================================================ */
   function drawElevationChart(points) {
     const ctx = document.getElementById('elevationChart');
@@ -555,7 +698,7 @@
   }
 
   /* ============================================================
-   * 9. 上传处理: 拖拽 + 点击
+   * 10. 上传处理: 拖拽 + 点击
    * ============================================================ */
   function bindUpload() {
     const zone = document.getElementById('uploadZone');
@@ -616,7 +759,7 @@
   }
 
   /* ============================================================
-   * 10. 报告导出 (html2canvas 截图 → PNG; 失败降级打印)
+   * 11. 报告导出 (html2canvas 截图 → PNG; 失败降级打印)
    * ============================================================ */
   async function exportReport() {
     const btn = document.getElementById('exportBtn');
@@ -639,8 +782,8 @@
       a.click();
       showToast('📄 报告已生成并下载');
     } catch (e) {
-      // 瓦片跨域可能污染 canvas → 降级为浏览器打印
-      showToast('截图受跨域瓦片影响, 已切换为打印模式 (Ctrl+P 保存 PDF)');
+      // MapLibre 的 WebGL canvas 通常无法被 html2canvas 读取(跨域纹理污染) → 降级为打印
+      showToast('截图受 WebGL/跨域瓦片影响, 已切换为打印模式 (Ctrl+P 保存 PDF)');
       window.print();
     } finally {
       btn.disabled = false;
@@ -649,7 +792,7 @@
   }
 
   /* ============================================================
-   * 11. Toast 提示
+   * 12. Toast 提示
    * ============================================================ */
   function showToast(msg, ms) {
     const el = document.getElementById('toast');
@@ -661,7 +804,7 @@
   }
 
   /* ============================================================
-   * 12. PWA: Service Worker 注册 (仅 http/https 环境)
+   * 13. PWA: Service Worker 注册 (仅 http/https 环境)
    * ============================================================ */
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
@@ -671,10 +814,11 @@
   }
 
   /* ============================================================
-   * 13. 启动
+   * 14. 启动
    * ============================================================ */
   function init() {
     bindUpload();
+    bindLayerPopups();
 
     // 快捷键 R: 手动刷新风险检测
     document.addEventListener('keydown', (e) => {
@@ -686,7 +830,7 @@
 
     registerSW();
 
-    // 自动加载武功山示例并触发检测
+    // 自动加载武功山示例并触发检测(等地图样式加载完成)
     setTimeout(() => {
       loadWugongshan();
       showToast('🏔️ 已加载武功山反穿示例, 正在检测周边灾害...');
