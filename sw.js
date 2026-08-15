@@ -6,7 +6,7 @@
  *       保证灾害数据始终是实时抓取。
  * ============================================================ */
 
-const CACHE_NAME = 'trail-sense-v1';
+const CACHE_NAME = 'trail-sense-v2';
 
 /* 应用壳: 首次访问即离线可用所需的全部本地资源 */
 const APP_SHELL = [
@@ -58,6 +58,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isSameOrigin) {
+    // sw.js 自身永不缓存: 否则旧 SW 会一直给浏览器返回旧版 sw.js,
+    // CACHE_NAME bump 也无法触发更新 (浏览器靠字节差异检测 SW 更新)
+    if (url.pathname.endsWith('/sw.js')) return;
+
     // 同源应用壳: 缓存优先 → 网络兜底并回填缓存
     event.respondWith(
       caches.match(req).then((cached) => {
