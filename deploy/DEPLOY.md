@@ -109,3 +109,30 @@ ssh root@173.242.116.220
 - Bandwagon VPS 有 root 免密 SSH (id_ed25519), 无需 sudo 密码: `ssh root@173.242.116.220`
 - 面板登录用户名/密码: 数据库 `users` 表 (bcrypt), 忘记时可用 `x-ui setting -username/-password` 重置
 - 3x-ui 面板地址 = `https://port.goitex.com:5432/<webBasePath>/` (webBasePath 在 settings 表)
+
+## 安全加固 (2026-08-15 第二轮, 按安全评估报告)
+
+| 风险项 | 措施 | 状态 |
+|---|---|---|
+| CDN 劫持/依赖漏洞 (中) | **SRI 完整性校验**: 4 个 CDN 库 (Leaflet/Turf/Chart/html2canvas) + Leaflet CSS, 主源+备用源各自带 integrity hash | ✅ |
+| FIRMS API Key 暴露 (中) | Key 仅存本机 localStorage, UI 增加透明提示; 建议生产用 Cloudflare Worker 代理 (见下) | ✅ |
+| 恶意文件上传 (高) | 浏览器端 FileReader 解析 (纯前端不上传), 新增 10MB 大小上限 + 20 万点上限 | ✅ |
+| 安全响应头缺失 (低) | X-Content-Type-Options: nosniff / Referrer-Policy / X-Frame-Options: DENY / Permissions-Policy / COOP / CORP | ✅ |
+| CORS (低) | 未开 Access-Control-Allow-Origin 通配符 (默认严格); 无跨域需求, 不额外放开 | ✅ |
+| Server 版本泄露 (低) | server_tokens off (源站显示 "nginx" 无版本号) | ✅ |
+
+### SRI 维护要点 (重要!)
+- **改 CDN 库版本时必须同步更新 hash**: `curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A`
+- **不同 CDN 的同一库文件内容可能不同** (实测: chart.js 在 jsdelivr 与 cdnjs 的 hash 不同) → 主源和备用源**各自用自己文件的 hash**
+- 备用源 document.write 中的 `<\/script>` 是 JS 字符串转义 (单反斜杠!), 不能写成 `\\/script`
+- 加 SRI 的 script 必须带 `crossorigin="anonymous"` 属性
+
+### FIRMS Key 后端代理 (可选后续)
+当前 Key 存用户浏览器 localStorage, 仅直连 NASA 使用。如需彻底隐藏:
+- 用 Cloudflare Worker 代理 `https://firms.modaps.eosdis.nasa.gov` (Key 放 Worker 环境变量)
+- 前端 connect-src 加 Worker 域名, 移除 localStorage 方案
+- 纯静态 PWA 无后端, 当前方案风险已可控 (Key 不经过本站服务器)
+
+### 部署权限坑 (再次踩到)
+- 用 tar 覆盖部署后 **必须** `chown -R root:root` + `chmod -R 755` — 否则 tar 保留本地文件属主,
+  nginx worker (www-data) 读不了 → **403 Permission denied** (症状: 突然全部 403, 但 TLS 正常)
