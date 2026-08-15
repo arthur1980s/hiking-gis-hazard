@@ -96,8 +96,21 @@ const TrailGeo = (function () {
   }
 
   /* ---------- 文件解析入口: 按扩展名分发, 返回 [lat,lng,ele][] ---------- */
+  // 安全校验(2026-08-15 加固): 文件大小/点数上限, 全部在浏览器端解析, 绝不原样上传服务器
+  const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+  const MAX_POINTS = 200000;                // 20 万点上限, 防超大文件拖垮浏览器
+
   function parseFile(file) {
     return new Promise((resolve, reject) => {
+      // 大小校验
+      if (file.size > MAX_FILE_BYTES) {
+        reject(new Error(`文件过大(${(file.size / 1048576).toFixed(1)}MB), 上限 10MB`));
+        return;
+      }
+      if (file.size === 0) {
+        reject(new Error('空文件, 请检查轨迹文件'));
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -109,6 +122,7 @@ const TrailGeo = (function () {
           else if (name.endsWith('.geojson') || name.endsWith('.json')) points = parseGeoJSON(text);
           else { reject(new Error('不支持的文件格式, 请上传 GPX / KML / GeoJSON')); return; }
           if (points.length < 2) reject(new Error('轨迹点不足(至少 2 个点)'));
+          else if (points.length > MAX_POINTS) reject(new Error(`轨迹点过多(${points.length} 点), 上限 ${MAX_POINTS}`));
           else resolve({ points, hasElevation: points.some((p) => p[2] != null && !isNaN(p[2])) });
         } catch (err) {
           reject(err);

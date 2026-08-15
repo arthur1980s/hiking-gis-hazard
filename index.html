@@ -15,26 +15,27 @@
     <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
     <link rel="apple-touch-icon" href="icons/icon.svg" />
 
-    <!-- ===== Leaflet 1.9.4 (CDN) ===== -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- ===== Leaflet 1.9.4 (CDN, SRI 完整性校验) ===== -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
 
-    <!-- ===== Turf.js 6 (CDN) ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!-- ===== Turf.js 6 (CDN, SRI) ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js" integrity="sha384-82q0nm29xZzIo5BMtDYnh2/NxeO6FoaK1S/0nF84w3cEsqbBfun3JdMyDVYWfVY5" crossorigin="anonymous"></script>
 
-    <!-- ===== Chart.js 4.4 (CDN) ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- ===== Chart.js 4.4 (CDN, SRI) ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
 
-    <!-- ===== html2canvas (CDN) ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- ===== html2canvas (CDN, SRI) ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
 
     <!-- ===== CDN 备用源: 主源(jsdelivr)加载失败时同步切换备用 CDN, 提升国内可达性 ===== -->
+    <!-- SRI 注意: 备用源必须使用与自身文件匹配的 hash(不同 CDN 构建产物可能不同, 如 chart.js) -->
     <script>
-        if (typeof L === 'undefined') document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>');
-        if (typeof turf === 'undefined') document.write('<script src="https://unpkg.com/@turf/turf@6/turf.min.js"><\/script>');
-        if (typeof Chart === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"><\/script>');
-        if (typeof html2canvas === 'undefined') document.write('<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>');
-        if (!document.querySelector('link[href*="leaflet.css"]')) document.write('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />');
+        if (typeof L === 'undefined') document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"><\/script>');
+        if (typeof turf === 'undefined') document.write('<script src="https://unpkg.com/@turf/turf@6/turf.min.js" integrity="sha384-82q0nm29xZzIo5BMtDYnh2/NxeO6FoaK1S/0nF84w3cEsqbBfun3JdMyDVYWfVY5" crossorigin="anonymous"><\/script>');
+        if (typeof Chart === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha384-DhxhYObIMeMNGyAG7iK11OHzBIKyEIeRL0ad1iFPAOwZB8iirUlTT0O/WJJUk8+o" crossorigin="anonymous"><\/script>');
+        if (typeof html2canvas === 'undefined') document.write('<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"><\/script>');
+        if (!document.querySelector('link[href*="leaflet.css"]')) document.write('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />');
     </script>
 
     <!-- ===== 本地样式 ===== -->
@@ -138,7 +139,8 @@
                         <button class="btn-outline" id="firmsKeySave" style="font-size:11px; padding:5px 12px;">保存</button>
                     </div>
                     <div class="firms-hint">
-                        申请: firms.modaps.eosdis.nasa.gov/api/map_key/ · 国内网络不通时山火自动降级为 GIBS 卫星瓦片并提示
+                        申请: firms.modaps.eosdis.nasa.gov/api/map_key/ · 国内网络不通时山火自动降级为 GIBS 卫星瓦片并提示<br />
+                        <span style="color:rgba(255,255,255,0.35);">🔒 Key 仅保存在<b>本机浏览器</b>(localStorage), 仅在你访问 NASA 时直接使用, 不会上传到本站服务器。</span>
                     </div>
                 </details>
             </div>
