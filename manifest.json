@@ -1,0 +1,26 @@
+{
+  "name": "户外徒步·态势感知预警系统",
+  "short_name": "TrailSense",
+  "description": "上传 GPX 轨迹, 自动检测周边 10km 山火/地震/暴雨等灾害风险, 高海拔风寒指数与微气象预警",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

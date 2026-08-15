@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="户外徒步路线态势感知与自然灾害交叉预警系统: 上传 GPX 轨迹, 检测周边 10km 山火/地震/暴雨灾害, 高海拔风寒指数" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>🏔️ TrailSense · 户外徒步态势感知与灾害交叉预警</title>
+
+    <!-- ===== PWA ===== -->
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="apple-touch-icon" href="icons/icon.svg" />
+
+    <!-- ===== Leaflet 1.9.4 (CDN) ===== -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- ===== Turf.js 6 (CDN) ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <!-- ===== Chart.js 4.4 (CDN) ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- ===== html2canvas (CDN) ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <!-- ===== CDN 备用源: 主源(jsdelivr)加载失败时同步切换备用 CDN, 提升国内可达性 ===== -->
+    <script>
+        if (typeof L === 'undefined') document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>');
+        if (typeof turf === 'undefined') document.write('<script src="https://unpkg.com/@turf/turf@6/turf.min.js"><\/script>');
+        if (typeof Chart === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"><\/script>');
+        if (typeof html2canvas === 'undefined') document.write('<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>');
+        if (!document.querySelector('link[href*="leaflet.css"]')) document.write('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />');
+    </script>
+
+    <!-- ===== 本地样式 ===== -->
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="app">
+    <!-- ===================== 顶部导航栏 ===================== -->
+    <header class="navbar">
+        <div class="navbar-brand">
+            <img class="logo" src="icons/icon.svg" alt="TrailSense" />
+            <span>TrailSense 徒步风险哨兵</span>
+            <span class="badge">武功山实例</span>
+        </div>
+        <div class="navbar-actions">
+            <div class="risk-pill" title="综合风险等级">
+                <span class="risk-dot safe" id="riskDot"></span>
+                <span id="riskLabel">综合风险: 检测中</span>
+            </div>
+            <button class="btn-outline" id="exportBtn" style="font-size:12px; padding:4px 14px;">📄 导出报告</button>
+        </div>
+    </header>
+
+    <!-- ===================== 主区域 ===================== -->
+    <div class="main">
+        <!-- 左: 地图区 -->
+        <div class="map-wrapper">
+            <div id="map"></div>
+
+            <!-- 底部浮层控制按钮组 -->
+            <div class="map-overlay-controls">
+                <button class="active" data-basemap="topo" title="OpenTopoMap 地形图">🗺️ 地形</button>
+                <button data-basemap="satellite" title="Esri 卫星影像">🛰️ 卫星</button>
+                <button data-basemap="dark" title="CartoDB 暗黑底图">🌙 暗黑</button>
+                <span class="sep"></span>
+                <button data-layer="fires" class="active" title="NASA FIRMS/GIBS 卫星山火热点">🔥 山火</button>
+                <button data-layer="quakes" class="active" title="USGS 48h 地震">🌋 地震</button>
+                <button data-layer="buffer" class="active" title="10km 监测缓冲区">⭕ 缓冲区</button>
+                <button data-layer="contour" title="等高线叠加层">🗺️ 等高线</button>
+                <button data-layer="rain" title="RainViewer 雨带雷达(2小时推演)">🌧️ 雨带</button>
+            </div>
+
+            <!-- 地图状态栏 -->
+            <div class="map-statusbar" id="mapStatusbar">📍 27.52000, 114.18000 · Zoom 12</div>
+        </div>
+
+        <!-- 右: 侧栏 (移动端转底部) -->
+        <aside class="side-panel" id="sidePanel">
+
+            <!-- 卡片 1: 上传轨迹 -->
+            <div class="card">
+                <div class="card-title"><span>📤</span> 上传轨迹 (GPX / KML / GeoJSON)</div>
+                <div class="upload-zone" id="uploadZone">
+                    <span class="big-icon">📂</span>
+                    <p>拖拽或点击选择文件</p>
+                    <span class="hint">支持 .gpx .kml .geojson · 最大 10MB</span>
+                    <input type="file" id="fileInput" accept=".gpx,.kml,.geojson,.json" style="display:none;" />
+                </div>
+                <div class="upload-actions">
+                    <button class="btn-outline" onclick="window.TrailSense && window.TrailSense.loadWugongshan()" style="font-size:12px;">🏔️ 武功山反穿（内置）</button>
+                    <button class="btn-outline" onclick="location.reload()" style="font-size:12px;">🗑️ 清除</button>
+                    <select class="buffer-select" id="bufferRadius" title="监测缓冲区半径">
+                        <option value="5">5km</option>
+                        <option value="10" selected>10km</option>
+                        <option value="20">20km</option>
+                        <option value="30">30km</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 卡片 2: 路线概况 + 海拔剖面 -->
+            <div class="card">
+                <div class="card-title"><span>📊</span> 路线概况</div>
+                <div class="trail-stats">
+                    <div class="trail-stat-item"><div class="num" id="statDistance">--</div><div class="label">总距离 km</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statElevation">--</div><div class="label">累计爬升</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statDescent">--</div><div class="label">累计下降</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statMaxEle">--</div><div class="label">最高海拔</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statMinEle">--</div><div class="label">最低海拔</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statPoints">--</div><div class="label">轨迹点数</div></div>
+                </div>
+                <div class="chart-container"><canvas id="elevationChart"></canvas></div>
+            </div>
+
+            <!-- 卡片 3: 灾害碰撞检测 · 预警列表 -->
+            <div class="card">
+                <div class="card-title">
+                    <span>⚠️</span> 灾害碰撞检测 · 预警列表
+                    <span class="status" id="detectStatus"></span>
+                </div>
+                <div class="source-status" id="sourceStatus">⏳ 数据源初始化中...</div>
+                <div class="alert-list" id="alertList">
+                    <div class="alert-item safe"><span>✅</span><span class="txt">正在加载示例轨迹并检测...</span></div>
+                </div>
+
+                <details class="firms-settings">
+                    <summary>🔑 NASA FIRMS API Key 设置(可选)</summary>
+                    <div class="firms-row">
+                        <input type="text" id="firmsKeyInput" placeholder="粘贴 FIRMS MAP_KEY, 留空则仅用 GIBS 瓦片" />
+                        <button class="btn-outline" id="firmsKeySave" style="font-size:11px; padding:5px 12px;">保存</button>
+                    </div>
+                    <div class="firms-hint">
+                        申请: firms.modaps.eosdis.nasa.gov/api/map_key/ · 国内网络不通时山火自动降级为 GIBS 卫星瓦片并提示
+                    </div>
+                </details>
+            </div>
+
+            <!-- 卡片 4: 微气象 + 风寒指数 -->
+            <div class="card">
+                <div class="card-title"><span>🌬️</span> 高海拔微气象 · 风寒指数</div>
+                <div class="wx-grid">
+                    <div class="wx-item"><div class="num" id="wxPeakEle">--</div><div class="label">最高点海拔</div></div>
+                    <div class="wx-item"><div class="num" id="wxTemp">--</div><div class="label">实时气温</div></div>
+                    <div class="wx-item"><div class="num" id="wxGust">--</div><div class="label">当前阵风</div></div>
+                    <div class="wx-item"><div class="num" id="wxUV">--</div><div class="label">UV 指数</div></div>
+                    <div class="wx-item"><div class="num" id="wxSoil">--</div><div class="label">土壤湿度</div></div>
+                    <div class="wx-item"><div class="num" id="wxWc">--</div><div class="label">体感风寒</div></div>
+                    <div class="wx-item"><div class="num" id="wxGust6h">--</div><div class="label">6h最大阵风</div></div>
+                    <div class="wx-item"><div class="num" id="wxWc6h">--</div><div class="label">6h最低体感</div></div>
+                    <div class="wx-item"><div class="num" id="wxPrecip">--</div><div class="label">2日降水概率</div></div>
+                </div>
+                <div class="windchill-calc">
+                    <input type="number" id="tempInput" value="2" step="0.5" placeholder="气温 °C" title="气温 °C" />
+                    <span style="color:rgba(255,255,255,0.3);">@</span>
+                    <input type="number" id="windInput" value="25" step="1" placeholder="风速 km/h" title="风速 km/h" />
+                    <button class="btn-primary" id="calcBtn" style="padding:6px 16px; font-size:13px;">计算</button>
+                    <span class="windchill-result" id="windchillDisplay">--°C</span>
+                </div>
+                <div class="wc-note">
+                    ⚠️ 体感 &lt; 0°C 时存在失温风险 · 公式: WC = 13.12 + 0.6215T − 11.37V<sup>0.16</sup> + 0.3965T·V<sup>0.16</sup>
+                    <br/>数据源: Open-Meteo (按轨迹最高点海拔插值)
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<!-- Toast 提示 -->
+<div id="toast"></div>
+
+<!-- ===== 本地 JS: 依赖顺序 geo → hazards → weather → app ===== -->
+<script src="js/geo.js"></script>
+<script src="js/hazards.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

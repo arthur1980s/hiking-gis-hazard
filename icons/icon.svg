@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 深色圆角方块背景(暗黑科技风) -->
+  <rect width="512" height="512" rx="104" fill="#1a1a2e"/>
+  <!-- 外层发光描边 -->
+  <rect x="10" y="10" width="492" height="492" rx="96" fill="none" stroke="#e94560" stroke-opacity="0.55" stroke-width="6"/>
+  <!-- 远处山峰(浅灰) -->
+  <path d="M64 400 L196 168 L268 288 L316 232 L448 400 Z" fill="#e8e8e8" opacity="0.92"/>
+  <!-- 近处山峰(强调红) -->
+  <path d="M196 400 L268 300 L340 400 Z" fill="#e94560"/>
+  <!-- 山间积雪 -->
+  <path d="M196 168 L224 220 L196 210 L176 224 Z" fill="#ffffff" opacity="0.9"/>
+  <!-- 太阳/热源圆点 -->
+  <circle cx="382" cy="120" r="44" fill="#e94560"/>
+  <circle cx="382" cy="120" r="62" fill="none" stroke="#e94560" stroke-opacity="0.4" stroke-width="8"/>
+  <!-- 底部监测弧线(雷达) -->
+  <path d="M128 436 A128 128 0 0 1 384 436" fill="none" stroke="#e94560" stroke-opacity="0.7" stroke-width="8" stroke-linecap="round"/>
+</svg>
