@@ -6,7 +6,7 @@
  *       保证灾害数据始终是实时抓取。
  * ============================================================ */
 
-const CACHE_NAME = 'trail-sense-v12'; // 3D 依赖本地 vendor 化 + 主题切换 + 默认英文/地形, bump 强制更新
+const CACHE_NAME = 'trail-sense-v13'; // 跨域放行 + 3D 本地导入 + 主题/英文/地形, bump 强制更新 // 3D 依赖本地 vendor 化 + 主题切换 + 默认英文/地形, bump 强制更新
 
 /* 应用壳: 首次访问即离线可用所需的全部本地资源 */
 const APP_SHELL = [
@@ -104,15 +104,9 @@ self.addEventListener('fetch', (event) => {
       })
     );
   } else {
-    // 跨域 CDN 库: 网络优先, 失败回退缓存(离线时仍可加载已缓存库)
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-          return res;
-        })
-        .catch(() => caches.match(req))
-    );
+    // 跨域请求(CDN 备用源/document.write 降级/地图瓦片/API): 直接放行,
+    // 交给浏览器原生处理 — SW 不拦截跨域 fetch, 避免被 CSP connect-src 拦截报错,
+    // 也不缓存跨域资源(核心库已本地 vendor 化, 无需离线跨域缓存)
+    return;
   }
 });

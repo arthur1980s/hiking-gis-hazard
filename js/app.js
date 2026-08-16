@@ -342,7 +342,7 @@
 
   /* 加载雨崩徒步示例(默认轨迹; 同时供「雨崩徒步(内置)」按钮调用) */
   function loadYubeng() {
-    loadYubengPoints().then((pts) => loadTrail(pts, '雨崩·神湖徒步'));
+    loadYubengPoints().then((pts) => loadTrail(pts, t('trail.name.yubeng'), 'trail.name.yubeng'));
   }
 
   /* 保留武功山加载(向后兼容 window.TrailSense, 不再被任何 UI 调用) */
@@ -351,14 +351,16 @@
     loadTrail(pts, '武功山反穿');
   }
 
-  /* 更新顶部导航栏 badge: 跟随当前加载的轨迹名(示例/Discover 路线/上传文件) */
-  function setTrailBadge(name) {
-    state.trailName = name || '雨崩·神湖徒步';
+  /* 更新顶部导航栏 badge: 跟随当前加载的轨迹名(示例/Discover 路线/上传文件)
+   * nameKey: 内置路线的 i18n 键(语言切换时 badge 自动跟随取词) */
+  function setTrailBadge(name, nameKey) {
+    state.trailName = name || t('trail.name.yubeng');
+    state.trailNameKey = nameKey || null;
     const el = document.getElementById('trailBadge');
     if (el) el.textContent = state.trailName;
   }
 
-  async function loadTrail(points, name) {
+  async function loadTrail(points, name, nameKey) {
     state.points = points;
 
     // 切换轨迹/加载 GPX 时回到 2D 视角: 若 3D 已开启则关闭(按钮状态同步), 否则确保 pitch 0
@@ -369,7 +371,7 @@
         map.setPitch(0);
       }
     } catch (e) { /* 3D 模块异常不影响轨迹加载 */ }
-    setTrailBadge(name); // 统一更新 badge, 未传 name 时默认"雨崩·神湖徒步"
+    setTrailBadge(name, nameKey); // 统一更新 badge; nameKey 供语言切换时重新取词
 
     // 海拔缺失时用 Open-Meteo 高程 API 补齐
     let hasElevation = points.some((p) => p[2] != null && !isNaN(p[2]));
@@ -1296,8 +1298,8 @@
     if (!('serviceWorker' in navigator)) return;
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
-    // 版本化注册: 新 URL(sw.js?v=12)绕过旧 SW 缓存, 强制更新 SW
-    navigator.serviceWorker.register('sw.js?v=12').then((reg) => {
+    // 版本化注册: 新 URL(sw.js?v=13)绕过旧 SW 缓存, 强制更新 SW
+    navigator.serviceWorker.register('sw.js?v=13').then((reg) => {
       // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
       // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
       reg.addEventListener('updatefound', () => {
@@ -1322,7 +1324,8 @@
   /* Discover 面板内置示例路线(雨崩为真实 GPX, 其余为简化坐标模拟, 海拔用正弦曲线模拟) */
   const DISCOVER_TRAILS = {
     yubeng: {
-      name: '雨崩·神湖徒步',
+      nameKey: 'trail.name.yubeng',
+      name: t('trail.name.yubeng'), // 渲染时取当前语言
       points: () => loadYubengPoints() // 真实 GPX(异步 fetch+解析), 失败降级内置精简点
     },
   };
@@ -1349,7 +1352,7 @@
         const trail = DISCOVER_TRAILS[btn.dataset.trail];
         if (!trail) return;
         const pts = await trail.points(); // 支持同步数组与异步 Promise(雨崩 GPX)
-        loadTrail(pts, trail.name); // badge 同步为路线名
+        loadTrail(pts, trail.name, trail.nameKey); // badge 同步为路线名(nameKey 供语言切换)
         switchView('hike');
         showToast(t('toast.route', { name: trail.name }));
       });
@@ -1412,6 +1415,8 @@
     i18n.onChange(() => {
       updateRiskPanel();
       updateWeatherPanel();
+      // badge 语言联动: 内置路线名按 i18n 键重新取词(上传文件名为数据, 不翻译)
+      if (state.trailNameKey) setTrailBadge(t(state.trailNameKey), state.trailNameKey);
       if (state.points) {
         setDetectStatus(state.detecting ? t('status.detecting') : t('status.updated', { time: state.lastUpdatedTime || '' }), state.detecting);
       }
