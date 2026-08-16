@@ -8,7 +8,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>🏔️ TrailSense · 户外徒步态势感知与灾害交叉预警</title>
+    <title>🏔️ Traveler Guide · 你好啊旅行者</title>
 
     <!-- ===== PWA ===== -->
     <link rel="manifest" href="manifest.json" />
@@ -47,9 +47,9 @@
     <!-- ===================== 顶部导航栏 ===================== -->
     <header class="navbar">
         <div class="navbar-brand">
-            <img class="logo" src="icons/icon.svg" alt="TrailSense" />
-            <span>TrailSense 徒步风险哨兵</span>
-            <span class="badge" id="trailBadge">武功山反穿</span>
+            <img class="logo" src="icons/icon.svg" alt="Traveler Guide" />
+            <span>Traveler Guide 你好啊旅行者</span>
+            <span class="badge" id="trailBadge">雨崩·神湖徒步</span>
         </div>
         <div class="navbar-actions">
             <div class="risk-pill" title="综合风险等级">
@@ -94,7 +94,6 @@
             <div class="map-overlay-controls">
                 <button class="active" data-basemap="topo" title="OpenTopoMap 地形图">🗺️ 地形</button>
                 <button data-basemap="satellite" title="Esri 卫星影像">🛰️ 卫星</button>
-                <button data-basemap="dark" title="CartoDB 暗黑底图">🌙 暗黑</button>
                 <span class="sep"></span>
                 <button data-layer="fires" class="active" title="NASA FIRMS/GIBS 卫星山火热点">🔥 山火</button>
                 <button data-layer="quakes" class="active" title="USGS 48h 地震">🌋 地震</button>
@@ -181,7 +180,7 @@
                         <input type="file" id="fileInput" accept=".gpx,.kml,.geojson,.json" style="display:none;" />
                     </div>
                     <div class="upload-actions">
-                        <button class="btn-outline" onclick="window.TrailSense && window.TrailSense.loadWugongshan()" style="font-size:12px;">🏔️ 武功山反穿（内置）</button>
+                        <button class="btn-outline" onclick="window.TrailSense && window.TrailSense.loadYubeng()" style="font-size:12px;">🏞️ 雨崩徒步（内置）</button>
                         <button class="btn-outline" onclick="location.reload()" style="font-size:12px;">🗑️ 清除</button>
                         <select class="buffer-select" id="bufferRadius" title="监测缓冲区半径">
                             <option value="5">5km</option>
@@ -202,13 +201,13 @@
 
                 <div class="card route-card">
                     <div class="route-head">
-                        <span class="route-flag">🏔️</span>
+                        <span class="route-flag">🏞️</span>
                         <div class="route-meta">
-                            <div class="route-name">武功山反穿</div>
-                            <div class="route-sub">中国江西 · 高山草甸 · 最高 1918m</div>
+                            <div class="route-name">雨崩·神湖徒步</div>
+                            <div class="route-sub">云南梅里雪山 · 高海拔徒步 · 最高 4460m</div>
                         </div>
                     </div>
-                    <button class="btn-primary route-load" data-trail="wugongshan">加载并检测</button>
+                    <button class="btn-primary route-load" data-trail="yubeng">加载并检测</button>
                 </div>
 
                 <div class="card route-card">
@@ -236,9 +235,9 @@
                 <div class="card">
                     <div class="card-title"><span>💡</span> 使用提示</div>
                     <p class="discover-tip">
-                        · 示例轨迹为简化模拟数据(正弦海拔), 用于演示完整检测流程<br />
+                        · 雨崩徒步为真实轨迹(GPX), 富士山/半圆顶为简化模拟数据(正弦海拔)<br />
                         · 在上方上传自己的 GPX / KML / GeoJSON 轨迹, 加载后自动回到 Hike 视图<br />
-                        · 点击地图上的 🟢 起点 / 🔴 终点 / ⛰️ 景点可查看详情
+                        · 点击地图上的 🔴 起点 / 🟢 终点 / ⛰️ 景点可查看详情
                     </p>
                 </div>
             </div><!-- /view-panel discover -->

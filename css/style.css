@@ -233,6 +233,53 @@ body {
     pointer-events: none;
 }
 
+/* ===================== 纯 CSS 定位针 (起点红 / 终点绿) ===================== */
+/* 经典 pin 形状: 圆头 + 三角尾, 无图片加载 */
+.map-pin {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    border-radius: 50% 50% 50% 0; /* 圆角切出三角尾 */
+    transform: rotate(-45deg);    /* 旋转使尖端朝下 */
+    border: 2px solid #ffffff;    /* 白色描边 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* 内层白点(模拟定位针中心孔) */
+.map-pin::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffffff;
+    transform: translate(-50%, -50%);
+}
+
+.map-pin.pin-start { background: #e74c3c; } /* 起点: 红 */
+.map-pin.pin-end   { background: #2ecc71; } /* 终点: 绿 */
+
+/* ===================== 剖面图 hover 浮动标签 (跟随红点) ===================== */
+.hover-label {
+    position: absolute;
+    z-index: 480; /* 位于地图之上、悬浮控件之下 */
+    transform: translate(-50%, -140%); /* 显示在红点上方 */
+    background: rgba(10, 10, 15, 0.88);
+    border: 1px solid rgba(233, 69, 96, 0.45);
+    color: #fff;
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 4px 10px;
+    border-radius: 8px;
+    white-space: nowrap;
+    pointer-events: none;
+    display: none; /* 默认隐藏, hover 时显示 */
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+    font-variant-numeric: tabular-nums;
+}
+
 /* ===================== 侧栏 ===================== */
 .side-panel {
     width: 380px;

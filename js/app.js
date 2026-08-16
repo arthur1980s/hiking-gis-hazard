@@ -14,7 +14,7 @@
    * ============================================================ */
   const state = {
     points: null,           // 轨迹点数组 [[lat,lng,ele],...]
-    trailName: '武功山反穿', // 当前轨迹名称(顶部 badge 显示)
+    trailName: '雨崩·神湖徒步', // 当前轨迹名称(顶部 badge 显示)
     trailGeoJSON: null,     // 轨迹 FeatureCollection
     lineCoords: null,       // [[lng,lat,ele?],...]
     bufferGeoJSON: null,    // 缓冲区 Feature
@@ -56,22 +56,14 @@
           tileSize: 256,
           maxzoom: 18,
           attribution: '© Esri World Imagery'
-        },
-        'cartodb': {
-          type: 'raster',
-          tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{ratio}.png'], // {ratio}→@2x (高分屏)
-          tileSize: 256,
-          maxzoom: 19,
-          attribution: '© CARTO © OSM'
         }
       },
       layers: [
         { id: 'basemap-topo', type: 'raster', source: 'opentopomap', minzoom: 0, maxzoom: 22 },
-        { id: 'basemap-satellite', type: 'raster', source: 'esri', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
-        { id: 'basemap-dark', type: 'raster', source: 'cartodb', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } }
+        { id: 'basemap-satellite', type: 'raster', source: 'esri', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } }
       ]
     },
-    center: [114.18, 27.52], // [lng, lat]
+    center: [98.79, 28.37], // [lng, lat] 默认视野: 云南雨崩(梅里雪山)
     zoom: 12,
     attributionControl: true
   });
@@ -153,7 +145,7 @@
   /* ============================================================
    * 4. 控件: 底图切换 + 图层开关
    * ============================================================ */
-  const BASEMAP_LAYER = { topo: 'basemap-topo', satellite: 'basemap-satellite', dark: 'basemap-dark' };
+  const BASEMAP_LAYER = { topo: 'basemap-topo', satellite: 'basemap-satellite' }; // 暗黑底图已移除
   let currentBasemap = 'topo';
 
   document.querySelectorAll('[data-basemap]').forEach((btn) => {
@@ -161,7 +153,7 @@
       document.querySelectorAll('[data-basemap]').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       const key = btn.dataset.basemap;
-      // 切换三个预定义底图图层的 visibility, 不重建地图
+      // 切换预定义底图图层的 visibility, 不重建地图
       Object.values(BASEMAP_LAYER).forEach((id) => map.setLayoutProperty(id, 'visibility', 'none'));
       map.setLayoutProperty(BASEMAP_LAYER[key], 'visibility', 'visible');
       currentBasemap = key;
@@ -247,6 +239,47 @@
   /* ============================================================
    * 5. 轨迹加载主流程
    * ============================================================ */
+
+  /* 雨崩徒步的 GPX 景点(wpt): 牧场 + 神湖 (来自 data/yubeng-hard.gpx) */
+  const YUBENG_SPOTS = [
+    { name: '牧场', lat: 28.362954, lng: 98.790424, desc: '高海拔牧场, 海拔 4346m' },
+    { name: '神湖', lat: 28.359753, lng: 98.786289, desc: '雨崩神湖, 海拔 4460m' }
+  ];
+
+  /* 雨崩轨迹降级点: fetch 失败(file:// 打开等)时使用, 保留关键路径点 */
+  const YUBENG_FALLBACK = [
+    [28.390854, 98.792835, 3060], // 起点(下雨崩)
+    [28.375000, 98.794500, 3500],
+    [28.362954, 98.790424, 4346], // 牧场
+    [28.359753, 98.786289, 4460], // 神湖
+    [28.368000, 98.785000, 4200]
+  ];
+
+  /* 雨崩轨迹点缓存: 首次 fetch 解析后复用(Discover 与内置按钮共享) */
+  let yubengPointsCache = null;
+
+  /* 获取雨崩轨迹点: fetch GPX → 解析; 失败降级为内置精简点 */
+  async function loadYubengPoints() {
+    if (yubengPointsCache) return yubengPointsCache;
+    try {
+      const res = await fetch('data/yubeng-hard.gpx');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const pts = TrailGeo.parseGPX(await res.text());
+      if (pts.length < 2) throw new Error('GPX 点不足');
+      yubengPointsCache = pts;
+      return pts;
+    } catch (e) {
+      console.warn('雨崩 GPX 加载失败, 使用内置精简点:', e);
+      return YUBENG_FALLBACK.slice();
+    }
+  }
+
+  /* 加载雨崩徒步示例(默认轨迹; 同时供「雨崩徒步(内置)」按钮调用) */
+  function loadYubeng() {
+    loadYubengPoints().then((pts) => loadTrail(pts, '雨崩·神湖徒步'));
+  }
+
+  /* 保留武功山加载(向后兼容 window.TrailSense, 不再被任何 UI 调用) */
   function loadWugongshan() {
     const pts = TrailGeo.generateWugongshanTrail();
     loadTrail(pts, '武功山反穿');
@@ -254,14 +287,14 @@
 
   /* 更新顶部导航栏 badge: 跟随当前加载的轨迹名(示例/Discover 路线/上传文件) */
   function setTrailBadge(name) {
-    state.trailName = name || '武功山反穿';
+    state.trailName = name || '雨崩·神湖徒步';
     const el = document.getElementById('trailBadge');
     if (el) el.textContent = state.trailName;
   }
 
   async function loadTrail(points, name) {
     state.points = points;
-    setTrailBadge(name); // 统一更新 badge, 未传 name 时默认"武功山反穿"
+    setTrailBadge(name); // 统一更新 badge, 未传 name 时默认"雨崩·神湖徒步"
 
     // 海拔缺失时用 Open-Meteo 高程 API 补齐
     let hasElevation = points.some((p) => p[2] != null && !isNaN(p[2]));
@@ -307,17 +340,19 @@
         paint: { 'line-color': '#e94560', 'line-width': 4, 'line-opacity': 0.9 }
       });
 
-      // 起点/终点 DOM 标记 + popup
+      // 起点/终点 DOM 标记: 纯 CSS 定位针(起点红 / 终点绿, 尖部对准坐标) + popup
       const c0 = points[0], cN = points[points.length - 1];
-      addDivMarker('<span style="font-size:20px; line-height:1;">🟢</span>', [c0[1], c0[0]], {
+      addDivMarker('<div class="map-pin pin-start"></div>', [c0[1], c0[0]], {
+        anchor: 'bottom',
         popup: '<strong>起点</strong><br><span style="font-size:11px;color:#999;">' + c0[0].toFixed(5) + ', ' + c0[1].toFixed(5) + '</span>'
       });
-      addDivMarker('<span style="font-size:20px; line-height:1;">🔴</span>', [cN[1], cN[0]], {
+      addDivMarker('<div class="map-pin pin-end"></div>', [cN[1], cN[0]], {
+        anchor: 'bottom',
         popup: '<strong>终点</strong><br><span style="font-size:11px;color:#999;">' + cN[0].toFixed(5) + ', ' + cN[1].toFixed(5) + '</span>'
       });
 
-      // 武功山景点标记 (锚点底部, 模拟 Leaflet iconAnchor 效果)
-      TrailGeo.SCENIC_SPOTS.forEach((spot) => {
+      // 雨崩徒步景点标记(来自 GPX 的 wpt: 牧场/神湖)
+      YUBENG_SPOTS.forEach((spot) => {
         addDivMarker('<span style="font-size:22px; line-height:1;">⛰️</span>', [spot.lng, spot.lat], {
           cls: 'spot-marker',
           anchor: 'bottom',
@@ -701,7 +736,7 @@
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (c) => c.parsed.y + ' m' } }
+          tooltip: { callbacks: { label: (c) => '里程 ' + c.label + 'km @ 海拔 ' + Math.round(c.parsed.y) + 'm' } }
         },
         scales: {
           x: {
@@ -754,7 +789,7 @@
     });
   }
 
-  /* 根据剖面图数据索引, 把红点移动到对应轨迹坐标 */
+  /* 根据剖面图数据索引, 把红点移动到对应轨迹坐标, 并同步浮动标签 */
   function updateHoverDot(chartIndex) {
     if (!state.points || !state.hoverIndexMap) return; // 空值保护(初始 -- 状态)
     const origIdx = state.hoverIndexMap[chartIndex];
@@ -770,12 +805,60 @@
       });
     }
     if (map.getLayer('hover-dot')) map.setLayoutProperty('hover-dot', 'visibility', 'visible');
+    updateHoverLabel(chartIndex, p); // 同步浮动标签
   }
 
-  /* 鼠标离开图表 → 隐藏红点 */
+  /* 鼠标离开图表 → 隐藏红点与浮动标签 */
   function hideHoverDot() {
     if (map.getLayer('hover-dot')) map.setLayoutProperty('hover-dot', 'visibility', 'none');
+    hideHoverLabel();
   }
+
+  /* ---------- 浮动标签: 跟随红点的 DOM 悬浮层(不依赖 glyphs) ---------- */
+  function ensureHoverLabel() {
+    let el = document.getElementById('hoverLabel');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'hoverLabel';
+      el.className = 'hover-label';
+      const wrap = document.querySelector('.map-wrapper');
+      if (wrap) wrap.appendChild(el); // 挂在地图容器内, 便于用 project 坐标定位
+    }
+    return el;
+  }
+
+  /* 显示浮动标签: 文字「里程 Xkm @ 海拔 Ym」, 位置投影到红点上方 */
+  function updateHoverLabel(chartIndex, p) {
+    const dist = (state.chart && state.chart.data && state.chart.data.labels) ? state.chart.data.labels[chartIndex] : '?';
+    const el = ensureHoverLabel();
+    el.textContent = '里程 ' + dist + 'km @ 海拔 ' + Math.round(p[2]) + 'm';
+    positionHoverLabel([p[1], p[0]]);
+    el.style.display = 'block';
+    state.hoverLngLat = [p[1], p[0]]; // 记录当前坐标, 地图移动时跟随刷新
+  }
+
+  /* 用 map.project 把标签定位到红点屏幕坐标上方 */
+  function positionHoverLabel(lngLat) {
+    const el = document.getElementById('hoverLabel');
+    if (!el) return;
+    const screen = map.project(lngLat); // 地图容器内像素坐标
+    el.style.left = screen.x + 'px';
+    el.style.top = screen.y + 'px';
+  }
+
+  /* 隐藏浮动标签 */
+  function hideHoverLabel() {
+    const el = document.getElementById('hoverLabel');
+    if (el) el.style.display = 'none';
+    state.hoverLngLat = null;
+  }
+
+  /* 地图平移/缩放时, 若标签可见则跟随红点移动 */
+  map.on('move', () => {
+    if (!state.hoverLngLat) return;
+    const el = document.getElementById('hoverLabel');
+    if (el && el.style.display !== 'none') positionHoverLabel(state.hoverLngLat);
+  });
 
   /* ============================================================
    * 10. 上传处理: 拖拽 + 点击
@@ -904,11 +987,11 @@
    *     与侧栏 .view-panel 的显隐。
    * ============================================================ */
 
-  /* Discover 面板内置示例路线(简化坐标模拟, 海拔用正弦曲线模拟) */
+  /* Discover 面板内置示例路线(雨崩为真实 GPX, 其余为简化坐标模拟, 海拔用正弦曲线模拟) */
   const DISCOVER_TRAILS = {
-    wugongshan: {
-      name: '武功山反穿',
-      points: () => TrailGeo.generateWugongshanTrail() // 复用既有示例生成器
+    yubeng: {
+      name: '雨崩·神湖徒步',
+      points: () => loadYubengPoints() // 真实 GPX(异步 fetch+解析), 失败降级内置精简点
     },
     fuji: {
       name: '富士山吉田路线',
@@ -968,10 +1051,10 @@
 
     // Discover 推荐路线: 加载示例轨迹到地图后自动切回 Hike 视图并触发检测
     document.querySelectorAll('[data-trail]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const trail = DISCOVER_TRAILS[btn.dataset.trail];
         if (!trail) return;
-        const pts = trail.points();
+        const pts = await trail.points(); // 支持同步数组与异步 Promise(雨崩 GPX)
         loadTrail(pts, trail.name); // badge 同步为路线名
         switchView('hike');
         showToast('🧭 已加载「' + trail.name + '」, 正在检测周边灾害...');
@@ -997,10 +1080,10 @@
 
     registerSW();
 
-    // 自动加载武功山示例并触发检测(等地图样式加载完成)
+    // 自动加载雨崩徒步示例并触发检测(等地图样式加载完成)
     setTimeout(() => {
-      loadWugongshan();
-      showToast('🏔️ 已加载武功山反穿示例, 正在检测周边灾害...');
+      loadYubeng();
+      showToast('🏞️ 已加载雨崩徒步示例, 正在检测周边灾害...');
     }, 400);
   }
 
@@ -1011,5 +1094,5 @@
   }
 
   /* 暴露给控制台调试 */
-  window.TrailSense = { state, map, loadTrail, loadWugongshan, updateRiskPanel, calcWindChill, exportReport, switchView, DISCOVER_TRAILS, setTrailBadge };
+  window.TrailSense = { state, map, loadTrail, loadYubeng, loadWugongshan, updateRiskPanel, calcWindChill, exportReport, switchView, DISCOVER_TRAILS, setTrailBadge };
 })();
