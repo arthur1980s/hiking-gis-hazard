@@ -56,10 +56,38 @@
           tileSize: 256,
           maxzoom: 18,
           attribution: '© Esri World Imagery'
+        },
+        // 高德矢量底图(大陆极稳, 默认): MapLibre 不支持 {s} 子域, 写死子域 webrd01
+        'amap': {
+          type: 'raster',
+          tiles: ['https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}'],
+          tileSize: 256,
+          maxzoom: 18,
+          attribution: '© 高德地图'
+        },
+        // 高德影像(卫星)
+        'amap-sat': {
+          type: 'raster',
+          tiles: ['https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}'],
+          tileSize: 256,
+          maxzoom: 18,
+          attribution: '© 高德地图'
+        },
+        // OSM 标准(大陆一般可达, 用作降级备用)
+        'osm': {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          maxzoom: 19,
+          attribution: '© OpenStreetMap'
         }
       },
       layers: [
-        { id: 'basemap-topo', type: 'raster', source: 'opentopomap', minzoom: 0, maxzoom: 22 },
+        // 默认底图为高德矢量(大陆网络稳定, 避免地图黑屏)
+        { id: 'basemap-amap', type: 'raster', source: 'amap', minzoom: 0, maxzoom: 22 },
+        { id: 'basemap-amap-sat', type: 'raster', source: 'amap-sat', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
+        { id: 'basemap-osm', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
+        { id: 'basemap-topo', type: 'raster', source: 'opentopomap', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
         { id: 'basemap-satellite', type: 'raster', source: 'esri', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } }
       ]
     },
@@ -148,19 +176,54 @@
   /* ============================================================
    * 4. 控件: 底图切换 + 图层开关
    * ============================================================ */
-  const BASEMAP_LAYER = { topo: 'basemap-topo', satellite: 'basemap-satellite' }; // 暗黑底图已移除
-  let currentBasemap = 'topo';
+  // 底图四源: 高德矢量(默认) / 地形 / 卫星 / OSM
+  const BASEMAP_LAYER = {
+    amap: 'basemap-amap',
+    topo: 'basemap-topo',
+    satellite: 'basemap-satellite',
+    osm: 'basemap-osm'
+  };
+  let currentBasemap = 'amap'; // 默认高德(大陆网络稳定)
+
+  /* 统一底图切换: 更新按钮高亮 + visibility 切换 + 重置瓦片错误计数 */
+  function switchBasemap(key) {
+    if (!BASEMAP_LAYER[key] || key === currentBasemap) return;
+    document.querySelectorAll('[data-basemap]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.basemap === key);
+    });
+    Object.values(BASEMAP_LAYER).forEach((id) => map.setLayoutProperty(id, 'visibility', 'none'));
+    map.setLayoutProperty(BASEMAP_LAYER[key], 'visibility', 'visible');
+    currentBasemap = key;
+    basemapErrorCount = 0; // 手动/自动切换后重置降级计数
+  }
 
   document.querySelectorAll('[data-basemap]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-basemap]').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      const key = btn.dataset.basemap;
-      // 切换预定义底图图层的 visibility, 不重建地图
-      Object.values(BASEMAP_LAYER).forEach((id) => map.setLayoutProperty(id, 'visibility', 'none'));
-      map.setLayoutProperty(BASEMAP_LAYER[key], 'visibility', 'visible');
-      currentBasemap = key;
-    });
+    btn.addEventListener('click', () => switchBasemap(btn.dataset.basemap));
+  });
+
+  /* ============================================================
+   * 瓦片加载失败自动降级: 当前底图连续 ERROR_THRESHOLD 次瓦片错误
+   * → 沿降级链切换下一备用源(高德 → OSM → OpenTopoMap), 避免地图黑屏
+   * ============================================================ */
+  const ERROR_THRESHOLD = 5; // 连续瓦片错误阈值
+  const BASEMAP_FALLBACK_CHAIN = ['amap', 'osm', 'topo']; // 自动降级顺序
+  let basemapErrorCount = 0;
+
+  map.on('error', (e) => {
+    // 仅统计瓦片/网络类错误(忽略样式等其他错误)
+    const msg = (e && e.error && (e.error.message || '')) || '';
+    const isTileError = /tile|fetch|network|timeout|image|status\s*[45]\d\d|Failed to fetch/i.test(msg) || !msg;
+    if (!isTileError) return;
+    basemapErrorCount++;
+    if (basemapErrorCount >= ERROR_THRESHOLD) {
+      basemapErrorCount = 0; // 切换后由 switchBasemap 再重置
+      const idx = BASEMAP_FALLBACK_CHAIN.indexOf(currentBasemap);
+      const next = (idx >= 0 && idx < BASEMAP_FALLBACK_CHAIN.length - 1) ? BASEMAP_FALLBACK_CHAIN[idx + 1] : null;
+      if (next && next !== currentBasemap) {
+        switchBasemap(next);
+        showToast(t('toast.basemap.fallback') + ' → ' + t('map.' + next));
+      }
+    }
   });
 
   document.querySelectorAll('[data-layer]').forEach((btn) => {

@@ -26,6 +26,11 @@ const I18N = {
     'nav.discover.title': 'Discover · 探索推荐路线',
 
     /* 地图浮层按钮 */
+    'map.amap': '高德',
+    'map.amap.title': '高德矢量地图(大陆稳定)',
+    'map.osm': 'OSM',
+    'map.osm.title': 'OpenStreetMap 标准地图(备用)',
+    'toast.basemap.fallback': '⚠️ 底图源不可达, 已自动切换',
     'map.topo': '地形',
     'map.topo.title': 'OpenTopoMap 地形图',
     'map.satellite': '卫星',
@@ -190,6 +195,11 @@ const I18N = {
     'nav.discover': 'Discover',
     'nav.discover.title': 'Discover · Explore Routes',
 
+    'map.amap': 'Map',
+    'map.amap.title': 'Amap vector map (stable in CN)',
+    'map.osm': 'OSM',
+    'map.osm.title': 'OpenStreetMap standard (fallback)',
+    'toast.basemap.fallback': '⚠️ Basemap unreachable, switched to',
     'map.topo': 'Terrain',
     'map.topo.title': 'OpenTopoMap terrain',
     'map.satellite': 'Satellite',
