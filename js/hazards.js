@@ -11,10 +11,8 @@
  *       由 app.js 负责用 MapLibre 创建 raster source/layer。
  * ============================================================ */
 
-/* 可选的 NASA FIRMS API Key (留空则仅使用 GIBS 瓦片, 无需 Key)
- * 申请地址: https://firms.modaps.eosdis.nasa.gov/api/map_key/
- * 也可以在页面「预警列表」卡片中直接填写保存 (localStorage) */
-let FIRMS_MAP_KEY = '';
+/* NASA FIRMS API Key (后台固化, 无需用户配置; 申请地址: https://firms.modaps.eosdis.nasa.gov/api/map_key/) */
+const FIRMS_MAP_KEY = '6550b7fd1f2f6dbbd391559e296ca868';
 
 const Hazards = (function () {
   'use strict';
@@ -34,11 +32,9 @@ const Hazards = (function () {
     }
   }
 
-  /* 从 localStorage 读取用户填写的 FIRMS Key (页面保存, 无需刷新) */
+  /* 返回固化的 FIRMS Key(直接使用后台 Key, 不再依赖 localStorage) */
   function getFirmsKey() {
-    let saved = '';
-    try { saved = localStorage.getItem('firmsMapKey') || ''; } catch (e) { saved = ''; }
-    return FIRMS_MAP_KEY || saved.trim();
+    return FIRMS_MAP_KEY;
   }
 
   /* ============================================================
@@ -191,7 +187,7 @@ const Hazards = (function () {
   /* 对外导出 */
   return {
     fetchQuakes, fetchWildfires, checkIntersections,
-    setFirmsKey: (k) => { FIRMS_MAP_KEY = k || ''; },
+    getFirmsKey, // 暴露固化的 Key(供调试/扩展)
     TIMEOUT_MS
   };
 })();

@@ -20,6 +20,7 @@
     bufferGeoJSON: null,    // 缓冲区 Feature
     bufferLabel: null,      // 缓冲区标签 DOM Marker
     chart: null,            // Chart.js 实例
+    hoverIndexMap: null,    // 剖面图采样索引 → 原始轨迹点索引 映射(hover 红点联动用)
     layers: { fires: true, quakes: true, buffer: true, contour: false, rain: false },
     quakeData: { items: [], status: 'pending' },
     fireData: { points: [], status: 'pending', tileUrl: null },
@@ -90,7 +91,7 @@
    * ============================================================ */
 
   /* 自定义图层顺序(自底向上): 底图 < contour < buffer < gibs-fires < fires < quakes < trail < rain */
-  const LAYER_ORDER = ['contour', 'buffer', 'gibs-fires', 'fires', 'quakes', 'trail', 'rain-layer'];
+  const LAYER_ORDER = ['contour', 'buffer', 'gibs-fires', 'fires', 'quakes', 'trail', 'hover-dot', 'rain-layer'];
 
   /* 按固定顺序插入图层: 插到 LAYER_ORDER 中下一个已存在图层之下, 保证叠放层级稳定 */
   function addLayerOrdered(layer) {
@@ -295,6 +296,9 @@
       });
       clearDivMarkers();
       state.bufferLabel = null;
+
+      // hover 红点图层(剖面图联动, 默认隐藏)
+      ensureHoverDot();
 
       // 绘制轨迹线 (line layer)
       setGeoJSONLayer('trail', geojson, {
@@ -646,7 +650,9 @@
   }
 
   /* ============================================================
-   * 9. 海拔剖面图 (Chart.js)
+   * 9. 海拔剖面图 (Chart.js) + hover 联动地图红点
+   *    · x 轴显示「总距离 km」
+   *    · 鼠标悬停剖面图时, 地图上红色圆点沿轨迹移动到对应位置
    * ============================================================ */
   function drawElevationChart(points) {
     const ctx = document.getElementById('elevationChart');
@@ -659,16 +665,21 @@
       return;
     }
 
-    // 采样 ≤ 80 点, x 轴为累计距离(km)
+    // 采样 ≤ 80 点, x 轴为累计距离(km); 同时记录「采样索引 → 原始轨迹点索引」映射
     const step = Math.max(1, Math.ceil(points.length / 80));
     const sampled = [];
+    const indexMap = []; // 采样下标 → 原始 points 下标
     let acc = 0;
     let prev = null;
     points.forEach((p, i) => {
       if (prev) acc += TrailGeo.haversineKm(prev[0], prev[1], p[0], p[1]);
       prev = p;
-      if (i % step === 0 || i === points.length - 1) sampled.push({ d: acc, e: p[2] });
+      if (i % step === 0 || i === points.length - 1) {
+        sampled.push({ d: acc, e: p[2], i: i });
+        indexMap.push(i);
+      }
     });
+    state.hoverIndexMap = indexMap; // 供 hover 回调查询对应轨迹点
 
     state.chart = new Chart(ctx, {
       type: 'line',
@@ -693,7 +704,12 @@
           tooltip: { callbacks: { label: (c) => c.parsed.y + ' m' } }
         },
         scales: {
-          x: { display: false },
+          x: {
+            display: true, // 显示横轴(累计距离)
+            title: { display: true, text: '总距离 km', color: 'rgba(255,255,255,0.3)', font: { size: 9 } },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 }, maxTicksLimit: 6 }
+          },
           y: {
             display: true,
             grid: { color: 'rgba(255,255,255,0.05)' },
@@ -701,9 +717,64 @@
             beginAtZero: false
           }
         },
-        interaction: { intersect: false, mode: 'index' }
+        interaction: { intersect: false, mode: 'index' },
+        // hover 联动: 根据当前数据索引移动地图红点
+        onHover: (event, activeElements) => {
+          if (!activeElements || !activeElements.length) return;
+          updateHoverDot(activeElements[0].index);
+        }
       }
     });
+
+    // 鼠标离开图表 → 隐藏红点(先移除再添加, 防止重复监听)
+    ctx.removeEventListener('mouseleave', hideHoverDot);
+    ctx.addEventListener('mouseleave', hideHoverDot);
+  }
+
+  /* ---------- hover 红点图层: 红色圆点 + 白色描边, 位于轨迹线之上 ---------- */
+  function ensureHoverDot() {
+    whenReady(() => {
+      if (!map.getSource('hover-dot')) {
+        map.addSource('hover-dot', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      }
+      if (!map.getLayer('hover-dot')) {
+        addLayerOrdered({
+          id: 'hover-dot',
+          type: 'circle',
+          source: 'hover-dot',
+          layout: { visibility: 'none' }, // 默认隐藏, hover 时显示
+          paint: {
+            'circle-radius': 8,
+            'circle-color': '#e94560',
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff'
+          }
+        });
+      }
+    });
+  }
+
+  /* 根据剖面图数据索引, 把红点移动到对应轨迹坐标 */
+  function updateHoverDot(chartIndex) {
+    if (!state.points || !state.hoverIndexMap) return; // 空值保护(初始 -- 状态)
+    const origIdx = state.hoverIndexMap[chartIndex];
+    if (origIdx == null) return;
+    const p = state.points[origIdx]; // [lat, lng, ele]
+    ensureHoverDot();
+    const src = map.getSource('hover-dot');
+    if (src) {
+      src.setData({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p[1], p[0]] }, // [lng, lat]
+        properties: {}
+      });
+    }
+    if (map.getLayer('hover-dot')) map.setLayoutProperty('hover-dot', 'visibility', 'visible');
+  }
+
+  /* 鼠标离开图表 → 隐藏红点 */
+  function hideHoverDot() {
+    if (map.getLayer('hover-dot')) map.setLayoutProperty('hover-dot', 'visibility', 'none');
   }
 
   /* ============================================================
@@ -733,17 +804,6 @@
         if (!state.trailGeoJSON) return;
         generateBuffer(getBufferRadius());
         runHazardChecks(); // 半径变化后重新碰撞检测
-      });
-    }
-
-    // FIRMS API Key 保存
-    const keyInput = document.getElementById('firmsKeyInput');
-    const keySave = document.getElementById('firmsKeySave');
-    if (keyInput && keySave) {
-      try { keyInput.value = localStorage.getItem('firmsMapKey') || ''; } catch (e) { /* ignore */ }
-      keySave.addEventListener('click', () => {
-        try { localStorage.setItem('firmsMapKey', keyInput.value.trim()); } catch (e) { /* ignore */ }
-        showToast('✅ FIRMS API Key 已保存(下次检测生效)');
       });
     }
 
