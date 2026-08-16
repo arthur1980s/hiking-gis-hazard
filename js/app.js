@@ -814,11 +814,93 @@
   }
 
   /* ============================================================
-   * 14. 启动
+   * 14. 视图切换: Hike(默认, 态势感知) / Discover(探索路线)
+   *     Gaia GPS 风格左侧垂直导航栏; 切换时联动 .nav-item.active
+   *     与侧栏 .view-panel 的显隐。
+   * ============================================================ */
+
+  /* Discover 面板内置示例路线(简化坐标模拟, 海拔用正弦曲线模拟) */
+  const DISCOVER_TRAILS = {
+    wugongshan: {
+      name: '武功山反穿',
+      points: () => TrailGeo.generateWugongshanTrail() // 复用既有示例生成器
+    },
+    fuji: {
+      name: '富士山吉田路线',
+      // 起点: 富士吉田口五合目 (35.4877, 138.8078) → 山顶 (35.3606, 138.7274)
+      points: () => {
+        const pts = [];
+        const sLat = 35.4877, sLng = 138.8078;
+        const eLat = 35.3606, eLng = 138.7274;
+        const steps = 120;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const lat = sLat + (eLat - sLat) * t + Math.sin(t * 12) * 0.004;
+          const lng = sLng + (eLng - sLng) * t + Math.cos(t * 9) * 0.003;
+          // 海拔: 五合目 2305m → 山顶 3776m → 回落
+          const ele = 2305 + 1471 * Math.sin(t * Math.PI) + 120 * Math.sin(t * 5) + 40 * Math.cos(t * 3);
+          pts.push([lat, lng, Math.round(ele)]);
+        }
+        return pts;
+      }
+    },
+    halfdome: {
+      name: '优胜美地半圆顶',
+      // 起点: 优胜美地谷地 trailhead (37.7427, -119.5819) → 半圆顶 (37.7462, -119.5332)
+      points: () => {
+        const pts = [];
+        const sLat = 37.7427, sLng = -119.5819;
+        const eLat = 37.7462, eLng = -119.5332;
+        const steps = 120;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const lat = sLat + (eLat - sLat) * t + Math.sin(t * 11) * 0.0025;
+          const lng = sLng + (eLng - sLng) * t + Math.cos(t * 8) * 0.002;
+          // 海拔: 谷底 1219m → 穹顶 2695m
+          const ele = 1219 + 1476 * Math.sin(t * Math.PI) + 100 * Math.sin(t * 6);
+          pts.push([lat, lng, Math.round(ele)]);
+        }
+        return pts;
+      }
+    }
+  };
+
+  /* 视图切换: 联动左侧导航高亮 + 侧栏面板显隐 */
+  function switchView(view) {
+    document.querySelectorAll('.app-nav .nav-item').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.view === view);
+    });
+    document.querySelectorAll('.view-panel').forEach((panel) => {
+      panel.classList.toggle('active', panel.dataset.view === view);
+    });
+  }
+
+  /* 绑定导航按钮 + Discover 推荐路线加载 */
+  function bindNav() {
+    document.querySelectorAll('.app-nav .nav-item').forEach((btn) => {
+      btn.addEventListener('click', () => switchView(btn.dataset.view));
+    });
+
+    // Discover 推荐路线: 加载示例轨迹到地图后自动切回 Hike 视图并触发检测
+    document.querySelectorAll('[data-trail]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const trail = DISCOVER_TRAILS[btn.dataset.trail];
+        if (!trail) return;
+        const pts = trail.points();
+        loadTrail(pts);
+        switchView('hike');
+        showToast('🧭 已加载「' + trail.name + '」, 正在检测周边灾害...');
+      });
+    });
+  }
+
+  /* ============================================================
+   * 15. 启动
    * ============================================================ */
   function init() {
     bindUpload();
     bindLayerPopups();
+    bindNav();
 
     // 快捷键 R: 手动刷新风险检测
     document.addEventListener('keydown', (e) => {
@@ -844,5 +926,5 @@
   }
 
   /* 暴露给控制台调试 */
-  window.TrailSense = { state, map, loadTrail, loadWugongshan, updateRiskPanel, calcWindChill, exportReport };
+  window.TrailSense = { state, map, loadTrail, loadWugongshan, updateRiskPanel, calcWindChill, exportReport, switchView, DISCOVER_TRAILS };
 })();

@@ -62,7 +62,31 @@
 
     <!-- ===================== 主区域 ===================== -->
     <div class="main">
-        <!-- 左: 地图区 -->
+        <!-- 左: 垂直导航栏 (Gaia GPS 布局结构 + 本应用暗黑配色) -->
+        <nav class="app-nav" aria-label="主导航">
+            <!-- 第一组: 活动类型 -->
+            <div class="nav-group">
+                <button class="nav-item active" data-view="hike" title="Hike · 徒步态势感知">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 19 9 8l4.5 6.5L16 11l5 8Z" />
+                        <path d="M6 19 9 12.5" stroke-dasharray="2 2" opacity=".6" />
+                    </svg>
+                    <span>Hike</span>
+                </button>
+            </div>
+            <!-- 第二组: 探索 -->
+            <div class="nav-group">
+                <button class="nav-item" data-view="discover" title="Discover · 探索推荐路线">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="m15.5 8.5-2 5-5 2 2-5Z" />
+                    </svg>
+                    <span>Discover</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- 中: 地图区 -->
         <div class="map-wrapper">
             <div id="map"></div>
 
@@ -85,6 +109,9 @@
 
         <!-- 右: 侧栏 (移动端转底部) -->
         <aside class="side-panel" id="sidePanel">
+
+            <!-- ===== Hike 视图: 态势感知(上传/概况/预警/微气象) ===== -->
+            <div class="view-panel active" data-view="hike">
 
             <!-- 卡片 1: 上传轨迹 -->
             <div class="card">
@@ -171,6 +198,61 @@
                     <br/>数据源: Open-Meteo (按轨迹最高点海拔插值)
                 </div>
             </div>
+
+            </div><!-- /view-panel hike -->
+
+            <!-- ===== Discover 视图: 探索推荐路线 ===== -->
+            <div class="view-panel" data-view="discover">
+                <div class="card">
+                    <div class="card-title"><span>🧭</span> 探索 · 世界知名徒步路线</div>
+                    <p class="discover-intro">
+                        选择一条示例路线加载到地图, 系统会自动进行 10km 灾害碰撞检测、
+                        高海拔微气象评估与风寒指数计算。加载完成后自动返回 Hike 视图。
+                    </p>
+                </div>
+
+                <div class="card route-card">
+                    <div class="route-head">
+                        <span class="route-flag">🏔️</span>
+                        <div class="route-meta">
+                            <div class="route-name">武功山反穿</div>
+                            <div class="route-sub">中国江西 · 高山草甸 · 最高 1918m</div>
+                        </div>
+                    </div>
+                    <button class="btn-primary route-load" data-trail="wugongshan">加载并检测</button>
+                </div>
+
+                <div class="card route-card">
+                    <div class="route-head">
+                        <span class="route-flag">🗻</span>
+                        <div class="route-meta">
+                            <div class="route-name">富士山吉田路线</div>
+                            <div class="route-sub">日本山梨/静冈 · 经典登顶 · 最高 3776m</div>
+                        </div>
+                    </div>
+                    <button class="btn-primary route-load" data-trail="fuji">加载并检测</button>
+                </div>
+
+                <div class="card route-card">
+                    <div class="route-head">
+                        <span class="route-flag">🪨</span>
+                        <div class="route-meta">
+                            <div class="route-name">优胜美地半圆顶</div>
+                            <div class="route-sub">美国加州 · 花岗岩穹顶 · 最高 2695m</div>
+                        </div>
+                    </div>
+                    <button class="btn-primary route-load" data-trail="halfdome">加载并检测</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span>💡</span> 使用提示</div>
+                    <p class="discover-tip">
+                        · 示例轨迹为简化模拟数据(正弦海拔), 用于演示完整检测流程<br />
+                        · 也可在 Hike 视图上传自己的 GPX / KML / GeoJSON 轨迹<br />
+                        · 点击地图上的 🟢 起点 / 🔴 终点 / ⛰️ 景点可查看详情
+                    </p>
+                </div>
+            </div><!-- /view-panel discover -->
         </aside>
     </div>
 </div>

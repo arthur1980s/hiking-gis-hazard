@@ -250,6 +250,130 @@ body {
 .side-panel::-webkit-scrollbar-track { background: transparent; }
 .side-panel::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
 
+/* ===================== 左侧垂直导航栏 (Gaia GPS 布局 · 暗黑配色) ===================== */
+.app-nav {
+    width: 88px;
+    flex-shrink: 0;
+    background: rgba(16, 16, 30, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 0;
+    z-index: 600;
+}
+
+/* 导航分组: 纵向堆叠, 组间以分隔线+留白区分 */
+.nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 8px;
+}
+
+.nav-group + .nav-group {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* 导航项: 64px 高, 24px 图标在上 + 13px 文字在下 (Gaia 结构) */
+.nav-item {
+    position: relative;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item svg { width: 24px; height: 24px; }
+.nav-item span { font-size: 11px; letter-spacing: 0.3px; }
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* 激活项: 强调色圆角高亮 + 左侧 3px 竖条 (Gaia 激活态暗黑化) */
+.nav-item.active {
+    background: rgba(233, 69, 96, 0.15);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(233, 69, 96, 0.25);
+}
+
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 20%;
+    bottom: 20%;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(233, 69, 96, 0.8);
+}
+
+/* ===================== 侧栏视图面板 (Hike / Discover 切换) ===================== */
+.view-panel { display: none; }
+
+.view-panel.active {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ===================== Discover 探索面板 ===================== */
+.discover-intro {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.7;
+}
+
+.discover-tip {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    line-height: 1.8;
+}
+
+.route-card { cursor: default; }
+
+.route-head {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.route-flag { font-size: 26px; line-height: 1; }
+
+.route-meta { flex: 1; min-width: 0; }
+
+.route-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.route-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 2px;
+}
+
+.route-load { width: 100%; }
+
 .card {
     background: rgba(255, 255, 255, 0.03);
     border-radius: var(--radius);
@@ -576,7 +700,37 @@ details.firms-settings summary:hover { color: var(--accent); }
 /* ===================== 响应式: 移动端侧栏转底部 ===================== */
 @media (max-width: 900px) {
     .main { flex-direction: column-reverse; }
+    /* 左侧导航折叠为顶部横向导航条 (column-reverse + order 置顶) */
+    .app-nav {
+        width: 100%;
+        height: 56px;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 0;
+        order: 2; /* column-reverse 下最高 order 显示在最上方 */
+    }
+    .nav-group { flex-direction: row; gap: 6px; padding: 0 8px; }
+    .nav-group + .nav-group {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        border-left: 1px solid rgba(255, 255, 255, 0.06);
+        padding-left: 8px;
+        margin-left: 8px;
+    }
+    .nav-item {
+        height: 44px;
+        flex-direction: row;
+        gap: 6px;
+        padding: 0 14px;
+    }
+    .nav-item.active::before { display: none; }
+    .map-wrapper { order: 1; flex: 1; }
     .side-panel {
+        order: 0;
         width: 100%;
         max-height: 45vh;
         border-left: none;
@@ -589,6 +743,10 @@ details.firms-settings summary:hover { color: var(--accent); }
     .navbar { padding: 8px 12px; }
     .navbar-brand { font-size: 14px; }
     .risk-pill { font-size: 11px; padding: 4px 12px; }
+    .app-nav { height: 48px; }
+    .nav-item { height: 40px; padding: 0 10px; gap: 4px; }
+    .nav-item svg { width: 20px; height: 20px; }
+    .nav-item span { font-size: 10px; }
     .side-panel { padding: 12px 10px; max-height: 48vh; }
     .map-overlay-controls { bottom: 8px; padding: 6px 10px; gap: 5px; border-radius: 24px; }
     .map-overlay-controls button { font-size: 10px; padding: 4px 9px; }
@@ -601,7 +759,7 @@ details.firms-settings summary:hover { color: var(--accent); }
 @media print {
     body { overflow: visible; background: #fff; color: #000; }
     #app { height: auto; max-width: none; }
-    .navbar, .map-wrapper, .map-overlay-controls, .map-statusbar { display: none !important; }
+    .navbar, .app-nav, .map-wrapper, .map-overlay-controls, .map-statusbar { display: none !important; }
     .side-panel {
         width: 100% !important;
         max-height: none !important;
