@@ -68,7 +68,8 @@ const Hazards = (function () {
     } catch (err) {
       return {
         items: [], status: 'unreachable',
-        message: 'USGS 地震数据源不可达(超时/网络受限), 地震风险未知, 请出发前另行核查'
+        message: 'USGS 地震数据源不可达(超时/网络受限), 地震风险未知, 请出发前另行核查',
+        i18nKey: 'err.usgs'
       };
     }
   }
@@ -140,13 +141,17 @@ const Hazards = (function () {
       : (getFirmsKey()
           ? 'NASA FIRMS 数据源不可达(超时/网络受限), 已降级: 山火仅显示 GIBS 卫星热异常瓦片(若未显示说明数据源不通)'
           : '未配置 NASA FIRMS API Key, 山火点数据不可用; 已叠加 GIBS 卫星热异常瓦片(无需 Key, 尽力而为)');
-    return { tileUrl, points, status: points.length ? 'ok' : 'degraded', message: note };
+    // i18nKey: 供 app.js 渲染时按当前语言取词(message 为中文兜底)
+    const i18nKey = points.length ? 'ok.firms.points' : (getFirmsKey() ? 'err.firms.unreachable' : 'err.firms.nokey');
+    const i18nParams = points.length ? { n: points.length } : undefined;
+    return { tileUrl, points, status: points.length ? 'ok' : 'degraded', message: note, i18nKey, i18nParams };
   }
 
   /* ============================================================
    * 3. 碰撞检测: 灾害点 vs 10km 缓冲区 + 距轨迹最近距离
-   *    返回预警列表 [{level, icon, text, source, time}]
+   *    返回预警列表 [{level, icon, key, params, text, source, time}]
    *    level: danger(红) / warning(黄) / info(灰蓝)
+   *    key/params: 供 app.js 按当前语言渲染; text 为中文兜底
    * ============================================================ */
   function checkIntersections(bufferGeoJSON, quakes, firePoints, trailLineCoords) {
     const alerts = [];
@@ -157,11 +162,15 @@ const Hazards = (function () {
       const dist = TrailGeo.distancePointToLineKm([q.lat, q.lng], trailLineCoords);
       const mag = q.mag != null ? q.mag.toFixed(1) : '?';
       const level = q.mag >= 5 ? 'danger' : (q.mag >= 4 ? 'warning' : 'info');
+      // M≥4.5 追加山体滑坡/落石提示(用不同 i18n key)
+      const slide = q.mag >= 4.5;
       alerts.push({
         level,
         icon: '🌋',
+        key: slide ? 'alert.quake.slide' : 'alert.quake',
+        params: { dist: dist.toFixed(1), mag, place: q.place || '?' },
         text: '距轨迹 ' + dist.toFixed(1) + 'km 发现地震 M' + mag
-              + ' (' + (q.place || '未知位置') + ')' + (q.mag >= 4.5 ? ', 注意山体滑坡/落石风险' : ''),
+              + ' (' + (q.place || '未知位置') + ')' + (slide ? ', 注意山体滑坡/落石风险' : ''),
         source: 'USGS',
         time: new Date(q.time).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       });
@@ -174,6 +183,8 @@ const Hazards = (function () {
       alerts.push({
         level: 'danger',
         icon: '🔥',
+        key: 'alert.fire',
+        params: { dist: dist.toFixed(1), frp: f.frp ? Math.round(f.frp) : null },
         text: '距轨迹 ' + dist.toFixed(1) + 'km 发现 NASA 卫星山火热点'
               + (f.frp ? ' (辐射功率 ' + Math.round(f.frp) + ' MW)' : ''),
         source: 'NASA FIRMS',

@@ -37,23 +37,23 @@ const Weather = (function () {
     return 13.12 + 0.6215 * tempC - 11.37 * v + 0.3965 * tempC * v;
   }
 
-  /* ---------- WMO weather_code 描述与风险分级 ---------- */
+  /* ---------- WMO weather_code 描述与风险分级 (key 供 i18n 渲染, text 中文兜底) ---------- */
   function describeCode(code) {
     if (code == null) return null;
     const rules = [
-      { codes: [96, 99], level: 'danger', icon: '⛈️', text: '雷暴伴冰雹, 山脊线极度危险' },
-      { codes: [95], level: 'warning', icon: '⛈️', text: '雷暴天气, 注意山顶雷击' },
-      { codes: [65, 67], level: 'warning', icon: '🌧️', text: '强降雨/冻雨, 警惕山洪与泥石流' },
-      { codes: [82], level: 'warning', icon: '🌧️', text: '强阵雨, 注意湿滑' },
-      { codes: [75, 86], level: 'warning', icon: '🌨️', text: '强降雪/雪暴' },
-      { codes: [77], level: 'warning', icon: '❄️', text: '冰粒, 路面结冰风险' },
-      { codes: [71, 73, 85], level: 'info', icon: '🌨️', text: '降雪' },
-      { codes: [61, 63, 80, 81], level: 'info', icon: '🌦️', text: '降雨' },
-      { codes: [51, 53, 55, 56, 57], level: 'info', icon: '🌫️', text: '毛毛雨/冻毛毛雨' },
-      { codes: [45, 48], level: 'info', icon: '🌫️', text: '雾, 能见度低' }
+      { codes: [96, 99], level: 'danger', key: 'hail', icon: '⛈️', text: '雷暴伴冰雹, 山脊线极度危险' },
+      { codes: [95], level: 'warning', key: 'thunder', icon: '⛈️', text: '雷暴天气, 注意山顶雷击' },
+      { codes: [65, 67], level: 'warning', key: 'rainheavy', icon: '🌧️', text: '强降雨/冻雨, 警惕山洪与泥石流' },
+      { codes: [82], level: 'warning', key: 'shower', icon: '🌧️', text: '强阵雨, 注意湿滑' },
+      { codes: [75, 86], level: 'warning', key: 'snowheavy', icon: '🌨️', text: '强降雪/雪暴' },
+      { codes: [77], level: 'warning', key: 'ice', icon: '❄️', text: '冰粒, 路面结冰风险' },
+      { codes: [71, 73, 85], level: 'info', key: 'snow', icon: '🌨️', text: '降雪' },
+      { codes: [61, 63, 80, 81], level: 'info', key: 'rain', icon: '🌦️', text: '降雨' },
+      { codes: [51, 53, 55, 56, 57], level: 'info', key: 'drizzle', icon: '🌫️', text: '毛毛雨/冻毛毛雨' },
+      { codes: [45, 48], level: 'info', key: 'fog', icon: '🌫️', text: '雾, 能见度低' }
     ];
     for (const r of rules) {
-      if (r.codes.indexOf(code) !== -1) return { level: r.level, icon: r.icon, text: r.text };
+      if (r.codes.indexOf(code) !== -1) return { level: r.level, icon: r.icon, key: r.key, text: r.text };
     }
     return null;
   }
@@ -138,7 +138,8 @@ const Weather = (function () {
       code: null, uv: null, soil: null, windChill: null,
       maxGust6h: null, minWc6h: null, maxPrecipProb: 0, daily: {},
       status: 'unreachable',
-      message: 'Open-Meteo 气象数据源不可达(超时/网络受限), 微气象与风寒数据缺失'
+      message: 'Open-Meteo 气象数据源不可达(超时/网络受限), 微气象与风寒数据缺失',
+      i18nKey: 'err.weather'
     };
   }
 

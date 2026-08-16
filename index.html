@@ -48,15 +48,16 @@
     <header class="navbar">
         <div class="navbar-brand">
             <img class="logo" src="icons/icon.svg" alt="Traveler Guide" />
-            <span>Traveler Guide 你好啊旅行者</span>
+            <span data-i18n="brand.name">Traveler Guide 你好啊旅行者</span>
             <span class="badge" id="trailBadge">雨崩·神湖徒步</span>
         </div>
         <div class="navbar-actions">
-            <div class="risk-pill" title="综合风险等级">
+            <div class="risk-pill" title="综合风险等级" data-i18n-title="risk.title">
                 <span class="risk-dot safe" id="riskDot"></span>
-                <span id="riskLabel">综合风险: 检测中</span>
+                <span id="riskLabel" data-i18n="risk.detecting">综合风险: 检测中</span>
             </div>
-            <button class="btn-outline" id="exportBtn" style="font-size:12px; padding:4px 14px;">📄 导出报告</button>
+            <button class="btn-outline" id="langBtn" data-i18n="lang.btn" style="font-size:12px; padding:4px 12px;" title="中 / EN">EN</button>
+            <button class="btn-outline" id="exportBtn" data-i18n="export.btn" style="font-size:12px; padding:4px 14px;">📄 导出报告</button>
         </div>
     </header>
 
@@ -66,22 +67,22 @@
         <nav class="app-nav" aria-label="主导航">
             <!-- 第一组: 活动类型 -->
             <div class="nav-group">
-                <button class="nav-item active" data-view="hike" title="Hike · 徒步态势感知">
+                <button class="nav-item active" data-view="hike" data-i18n-title="nav.hike.title" title="Hike · 徒步态势感知">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M3 19 9 8l4.5 6.5L16 11l5 8Z" />
                         <path d="M6 19 9 12.5" stroke-dasharray="2 2" opacity=".6" />
                     </svg>
-                    <span>Hike</span>
+                    <span data-i18n="nav.hike">Hike</span>
                 </button>
             </div>
             <!-- 第二组: 探索 -->
             <div class="nav-group">
-                <button class="nav-item" data-view="discover" title="Discover · 探索推荐路线">
+                <button class="nav-item" data-view="discover" data-i18n-title="nav.discover.title" title="Discover · 探索推荐路线">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="9" />
                         <path d="m15.5 8.5-2 5-5 2 2-5Z" />
                     </svg>
-                    <span>Discover</span>
+                    <span data-i18n="nav.discover">Discover</span>
                 </button>
             </div>
         </nav>
@@ -92,14 +93,14 @@
 
             <!-- 底部浮层控制按钮组 -->
             <div class="map-overlay-controls">
-                <button class="active" data-basemap="topo" title="OpenTopoMap 地形图">🗺️ 地形</button>
-                <button data-basemap="satellite" title="Esri 卫星影像">🛰️ 卫星</button>
+                <button class="active" data-basemap="topo" data-i18n-title="map.topo.title" title="OpenTopoMap 地形图">🗺️ <span data-i18n="map.topo">地形</span></button>
+                <button data-basemap="satellite" data-i18n-title="map.satellite.title" title="Esri 卫星影像">🛰️ <span data-i18n="map.satellite">卫星</span></button>
                 <span class="sep"></span>
-                <button data-layer="fires" class="active" title="NASA FIRMS/GIBS 卫星山火热点">🔥 山火</button>
-                <button data-layer="quakes" class="active" title="USGS 48h 地震">🌋 地震</button>
-                <button data-layer="buffer" class="active" title="10km 监测缓冲区">⭕ 缓冲区</button>
-                <button data-layer="contour" title="等高线叠加层">🗺️ 等高线</button>
-                <button data-layer="rain" title="RainViewer 雨带雷达(2小时推演)">🌧️ 雨带</button>
+                <button data-layer="fires" class="active" data-i18n-title="layer.fires.title" title="NASA FIRMS/GIBS 卫星山火热点">🔥 <span data-i18n="layer.fires">山火</span></button>
+                <button data-layer="quakes" class="active" data-i18n-title="layer.quakes.title" title="USGS 48h 地震">🌋 <span data-i18n="layer.quakes">地震</span></button>
+                <button data-layer="buffer" class="active" data-i18n-title="layer.buffer.title" title="10km 监测缓冲区">⭕ <span data-i18n="layer.buffer">缓冲区</span></button>
+                <button data-layer="contour" data-i18n-title="layer.contour.title" title="等高线叠加层">🗺️ <span data-i18n="layer.contour">等高线</span></button>
+                <button data-layer="rain" data-i18n-title="layer.rain.title" title="RainViewer 雨带雷达(2小时推演)">🌧️ <span data-i18n="layer.rain">雨带</span></button>
             </div>
 
             <!-- 地图状态栏 -->
@@ -114,14 +115,14 @@
 
             <!-- 卡片 2: 路线概况 + 海拔剖面 -->
             <div class="card">
-                <div class="card-title"><span>📊</span> 路线概况</div>
+                <div class="card-title"><span>📊</span><span data-i18n="trail.card">路线概况</span></div>
                 <div class="trail-stats">
-                    <div class="trail-stat-item"><div class="num" id="statDistance">--</div><div class="label">总距离 km</div></div>
-                    <div class="trail-stat-item"><div class="num" id="statElevation">--</div><div class="label">累计爬升</div></div>
-                    <div class="trail-stat-item"><div class="num" id="statDescent">--</div><div class="label">累计下降</div></div>
-                    <div class="trail-stat-item"><div class="num" id="statMaxEle">--</div><div class="label">最高海拔</div></div>
-                    <div class="trail-stat-item"><div class="num" id="statMinEle">--</div><div class="label">最低海拔</div></div>
-                    <div class="trail-stat-item"><div class="num" id="statPoints">--</div><div class="label">轨迹点数</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statDistance">--</div><div class="label" data-i18n="stat.dist">总距离 km</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statElevation">--</div><div class="label" data-i18n="stat.ascent">累计爬升</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statDescent">--</div><div class="label" data-i18n="stat.descent">累计下降</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statMaxEle">--</div><div class="label" data-i18n="stat.maxEle">最高海拔</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statMinEle">--</div><div class="label" data-i18n="stat.minEle">最低海拔</div></div>
+                    <div class="trail-stat-item"><div class="num" id="statPoints">--</div><div class="label" data-i18n="stat.points">轨迹点数</div></div>
                 </div>
                 <div class="chart-container"><canvas id="elevationChart"></canvas></div>
             </div>
@@ -129,39 +130,40 @@
             <!-- 卡片 3: 灾害碰撞检测 · 预警列表 -->
             <div class="card">
                 <div class="card-title">
-                    <span>⚠️</span> 灾害碰撞检测 · 预警列表
+                    <span>⚠️</span><span data-i18n="hazard.card">灾害碰撞检测 · 预警列表</span>
                     <span class="status" id="detectStatus"></span>
                 </div>
-                <div class="source-status" id="sourceStatus">⏳ 数据源初始化中...</div>
+                <div class="source-status" id="sourceStatus" data-i18n="hazard.init">⏳ 数据源初始化中...</div>
                 <div class="alert-list" id="alertList">
-                    <div class="alert-item safe"><span>✅</span><span class="txt">正在加载示例轨迹并检测...</span></div>
+                    <div class="alert-item safe"><span>✅</span><span class="txt" data-i18n="hazard.loading">正在加载示例轨迹并检测...</span></div>
                 </div>
             </div>
 
             <!-- 卡片 4: 微气象 + 风寒指数 -->
             <div class="card">
-                <div class="card-title"><span>🌬️</span> 高海拔微气象 · 风寒指数</div>
+                <div class="card-title"><span>🌬️</span><span data-i18n="wx.card">高海拔微气象 · 风寒指数</span></div>
                 <div class="wx-grid">
-                    <div class="wx-item"><div class="num" id="wxPeakEle">--</div><div class="label">最高点海拔</div></div>
-                    <div class="wx-item"><div class="num" id="wxTemp">--</div><div class="label">实时气温</div></div>
-                    <div class="wx-item"><div class="num" id="wxGust">--</div><div class="label">当前阵风</div></div>
-                    <div class="wx-item"><div class="num" id="wxUV">--</div><div class="label">UV 指数</div></div>
-                    <div class="wx-item"><div class="num" id="wxSoil">--</div><div class="label">土壤湿度</div></div>
-                    <div class="wx-item"><div class="num" id="wxWc">--</div><div class="label">体感风寒</div></div>
-                    <div class="wx-item"><div class="num" id="wxGust6h">--</div><div class="label">6h最大阵风</div></div>
-                    <div class="wx-item"><div class="num" id="wxWc6h">--</div><div class="label">6h最低体感</div></div>
-                    <div class="wx-item"><div class="num" id="wxPrecip">--</div><div class="label">2日降水概率</div></div>
+                    <div class="wx-item"><div class="num" id="wxPeakEle">--</div><div class="label" data-i18n="wx.peakEle">最高点海拔</div></div>
+                    <div class="wx-item"><div class="num" id="wxTemp">--</div><div class="label" data-i18n="wx.temp">实时气温</div></div>
+                    <div class="wx-item"><div class="num" id="wxGust">--</div><div class="label" data-i18n="wx.gust">当前阵风</div></div>
+                    <div class="wx-item"><div class="num" id="wxUV">--</div><div class="label" data-i18n="wx.uv">UV 指数</div></div>
+                    <div class="wx-item"><div class="num" id="wxSoil">--</div><div class="label" data-i18n="wx.soil">土壤湿度</div></div>
+                    <div class="wx-item"><div class="num" id="wxWc">--</div><div class="label" data-i18n="wx.wc">体感风寒</div></div>
+                    <div class="wx-item"><div class="num" id="wxGust6h">--</div><div class="label" data-i18n="wx.gust6h">6h最大阵风</div></div>
+                    <div class="wx-item"><div class="num" id="wxWc6h">--</div><div class="label" data-i18n="wx.wc6h">6h最低体感</div></div>
+                    <div class="wx-item"><div class="num" id="wxPrecip">--</div><div class="label" data-i18n="wx.precip">2日降水概率</div></div>
                 </div>
                 <div class="windchill-calc">
-                    <input type="number" id="tempInput" value="2" step="0.5" placeholder="气温 °C" title="气温 °C" />
+                    <input type="number" id="tempInput" value="2" step="0.5" data-i18n-placeholder="wx.temp.ph" data-i18n-title="wx.temp.ph" placeholder="气温 °C" title="气温 °C" />
                     <span style="color:rgba(255,255,255,0.3);">@</span>
-                    <input type="number" id="windInput" value="25" step="1" placeholder="风速 km/h" title="风速 km/h" />
-                    <button class="btn-primary" id="calcBtn" style="padding:6px 16px; font-size:13px;">计算</button>
+                    <input type="number" id="windInput" value="25" step="1" data-i18n-placeholder="wx.wind.ph" data-i18n-title="wx.wind.ph" placeholder="风速 km/h" title="风速 km/h" />
+                    <button class="btn-primary" id="calcBtn" data-i18n="wx.calc" style="padding:6px 16px; font-size:13px;">计算</button>
                     <span class="windchill-result" id="windchillDisplay">--°C</span>
                 </div>
                 <div class="wc-note">
-                    ⚠️ 体感 &lt; 0°C 时存在失温风险 · 公式: WC = 13.12 + 0.6215T − 11.37V<sup>0.16</sup> + 0.3965T·V<sup>0.16</sup>
-                    <br/>数据源: Open-Meteo (按轨迹最高点海拔插值)
+                    <div data-i18n="wx.note.risk">⚠️ 体感 &lt; 0°C 时存在失温风险</div>
+                    <div data-i18n="wx.note.formula">公式: WC = 13.12 + 0.6215T − 11.37V^0.16 + 0.3965T·V^0.16</div>
+                    <div data-i18n="wx.note.source">数据源: Open-Meteo (按轨迹最高点海拔插值)</div>
                 </div>
             </div>
 
@@ -172,17 +174,17 @@
 
                 <!-- 上传轨迹 (从 Hike 视图迁移至此, 置于最前) -->
                 <div class="card">
-                    <div class="card-title"><span>📤</span> 上传轨迹 (GPX / KML / GeoJSON)</div>
+                    <div class="card-title"><span>📤</span><span data-i18n="upload.card">上传轨迹 (GPX / KML / GeoJSON)</span></div>
                     <div class="upload-zone" id="uploadZone">
                         <span class="big-icon">📂</span>
-                        <p>拖拽或点击选择文件</p>
-                        <span class="hint">支持 .gpx .kml .geojson · 最大 10MB</span>
+                        <p data-i18n="upload.drop">拖拽或点击选择文件</p>
+                        <span class="hint" data-i18n="upload.hint">支持 .gpx .kml .geojson · 最大 10MB</span>
                         <input type="file" id="fileInput" accept=".gpx,.kml,.geojson,.json" style="display:none;" />
                     </div>
                     <div class="upload-actions">
-                        <button class="btn-outline" onclick="window.TrailSense && window.TrailSense.loadYubeng()" style="font-size:12px;">🏞️ 雨崩徒步（内置）</button>
-                        <button class="btn-outline" onclick="location.reload()" style="font-size:12px;">🗑️ 清除</button>
-                        <select class="buffer-select" id="bufferRadius" title="监测缓冲区半径">
+                        <button class="btn-outline" onclick="window.TrailSense && window.TrailSense.loadYubeng()" style="font-size:12px;">🏞️ <span data-i18n="upload.yubeng">雨崩徒步（内置）</span></button>
+                        <button class="btn-outline" onclick="location.reload()" style="font-size:12px;">🗑️ <span data-i18n="upload.clear">清除</span></button>
+                        <select class="buffer-select" id="bufferRadius" data-i18n-title="upload.radius.title" title="监测缓冲区半径">
                             <option value="5">5km</option>
                             <option value="10" selected>10km</option>
                             <option value="20">20km</option>
@@ -192,8 +194,8 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-title"><span>🧭</span> 探索 · 世界知名徒步路线</div>
-                    <p class="discover-intro">
+                    <div class="card-title"><span>🧭</span><span data-i18n="discover.card">探索 · 世界知名徒步路线</span></div>
+                    <p class="discover-intro" data-i18n="discover.intro">
                         选择一条示例路线加载到地图, 系统会自动进行 10km 灾害碰撞检测、
                         高海拔微气象评估与风寒指数计算。加载完成后自动返回 Hike 视图。
                     </p>
@@ -203,41 +205,19 @@
                     <div class="route-head">
                         <span class="route-flag">🏞️</span>
                         <div class="route-meta">
-                            <div class="route-name">雨崩·神湖徒步</div>
-                            <div class="route-sub">云南梅里雪山 · 高海拔徒步 · 最高 4460m</div>
+                            <div class="route-name" data-i18n="route.yubeng.name">雨崩·神湖徒步</div>
+                            <div class="route-sub" data-i18n="route.yubeng.sub">云南梅里雪山 · 高海拔徒步 · 最高 4460m</div>
                         </div>
                     </div>
-                    <button class="btn-primary route-load" data-trail="yubeng">加载并检测</button>
-                </div>
-
-                <div class="card route-card">
-                    <div class="route-head">
-                        <span class="route-flag">🗻</span>
-                        <div class="route-meta">
-                            <div class="route-name">富士山吉田路线</div>
-                            <div class="route-sub">日本山梨/静冈 · 经典登顶 · 最高 3776m</div>
-                        </div>
-                    </div>
-                    <button class="btn-primary route-load" data-trail="fuji">加载并检测</button>
-                </div>
-
-                <div class="card route-card">
-                    <div class="route-head">
-                        <span class="route-flag">🪨</span>
-                        <div class="route-meta">
-                            <div class="route-name">优胜美地半圆顶</div>
-                            <div class="route-sub">美国加州 · 花岗岩穹顶 · 最高 2695m</div>
-                        </div>
-                    </div>
-                    <button class="btn-primary route-load" data-trail="halfdome">加载并检测</button>
+                    <button class="btn-primary route-load" data-trail="yubeng"><span data-i18n="route.load">加载并检测</span></button>
                 </div>
 
                 <div class="card">
-                    <div class="card-title"><span>💡</span> 使用提示</div>
+                    <div class="card-title"><span>💡</span><span data-i18n="discover.tips.title">使用提示</span></div>
                     <p class="discover-tip">
-                        · 雨崩徒步为真实轨迹(GPX), 富士山/半圆顶为简化模拟数据(正弦海拔)<br />
-                        · 在上方上传自己的 GPX / KML / GeoJSON 轨迹, 加载后自动回到 Hike 视图<br />
-                        · 点击地图上的 🔴 起点 / 🟢 终点 / ⛰️ 景点可查看详情
+                        <span data-i18n="discover.tips.line1">· 雨崩徒步为真实轨迹 (GPX)</span><br />
+                        <span data-i18n="discover.tips.line2">· 在上方上传自己的 GPX / KML / GeoJSON 轨迹, 加载后自动回到 Hike 视图</span><br />
+                        <span data-i18n="discover.tips.line3">· 点击地图上的 🔴 起点 / 🟢 终点 / ⛰️ 景点可查看详情</span>
                     </p>
                 </div>
             </div><!-- /view-panel discover -->
@@ -248,7 +228,8 @@
 <!-- Toast 提示 -->
 <div id="toast"></div>
 
-<!-- ===== 本地 JS: 依赖顺序 geo → hazards → weather → app ===== -->
+<!-- ===== 本地 JS: 依赖顺序 i18n → geo → hazards → weather → app ===== -->
+<script src="js/i18n.js"></script>
 <script src="js/geo.js"></script>
 <script src="js/hazards.js"></script>
 <script src="js/weather.js"></script>

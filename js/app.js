@@ -198,18 +198,18 @@
       if (state.rainFrames) {
         startRain();
       } else if (state.rainChecked) {
-        showToast('🌧️ 雨带雷达数据源不可达, 已自动关闭');
+        showToast(t('toast.rain.unreachable'));
         state.layers.rain = false;
         updateLayerBtn('rain');
       } else {
-        showToast('🌧️ 正在获取雨带雷达数据...');
+        showToast(t('toast.rain.fetching'));
         Weather.fetchRainRadar().then((frames) => {
           state.rainChecked = true;
           state.rainFrames = frames;
           if (state.layers.rain) {
             if (frames) startRain();
             else {
-              showToast('🌧️ 雨带雷达数据源不可达, 已自动关闭');
+              showToast(t('toast.rain.unreachable'));
               state.layers.rain = false;
               updateLayerBtn('rain');
             }
@@ -224,7 +224,7 @@
   function startRain() {
     stopRain();
     state.rainPlayer = Weather.playRainRadar(map, state.rainFrames, 600);
-    if (state.rainPlayer) showToast('🌧️ 雨带推演已开启(未来 2 小时)');
+    if (state.rainPlayer) showToast(t('toast.rain.on'));
   }
 
   function stopRain() {
@@ -344,11 +344,11 @@
       const c0 = points[0], cN = points[points.length - 1];
       addDivMarker('<div class="map-pin pin-start"></div>', [c0[1], c0[0]], {
         anchor: 'bottom',
-        popup: '<strong>起点</strong><br><span style="font-size:11px;color:#999;">' + c0[0].toFixed(5) + ', ' + c0[1].toFixed(5) + '</span>'
+        popup: '<strong>' + t('popup.start') + '</strong><br><span style="font-size:11px;color:#999;">' + c0[0].toFixed(5) + ', ' + c0[1].toFixed(5) + '</span>'
       });
       addDivMarker('<div class="map-pin pin-end"></div>', [cN[1], cN[0]], {
         anchor: 'bottom',
-        popup: '<strong>终点</strong><br><span style="font-size:11px;color:#999;">' + cN[0].toFixed(5) + ', ' + cN[1].toFixed(5) + '</span>'
+        popup: '<strong>' + t('popup.end') + '</strong><br><span style="font-size:11px;color:#999;">' + cN[0].toFixed(5) + ', ' + cN[1].toFixed(5) + '</span>'
       });
 
       // 雨崩徒步景点标记(来自 GPX 的 wpt: 牧场/神湖)
@@ -396,7 +396,7 @@
       const c = turf.center(buffered);
       state.bufferLabel = addDivMarker(
         '<span style="background:rgba(245,197,24,0.15);border:1px solid rgba(245,197,24,0.6);color:#f5c518;'
-        + 'padding:2px 8px;border-radius:20px;font-size:11px;white-space:nowrap;">📡 ' + km + 'km 监测区</span>',
+        + 'padding:2px 8px;border-radius:20px;font-size:11px;white-space:nowrap;">' + t('buffer.label', { km: km }) + '</span>',
         [c.geometry.coordinates[0], c.geometry.coordinates[1]]
       );
       if (!state.layers.buffer) applyLayerVisibility('buffer');
@@ -411,7 +411,7 @@
   async function runHazardChecks() {
     if (!state.points || state.detecting) return;
     state.detecting = true;
-    setDetectStatus('检测中...', true);
+    setDetectStatus(t('status.detecting'), true);
 
     const center = TrailGeo.midpoint(state.points);          // 轨迹中心(地震检索圆心)
     const peak = TrailGeo.peakPoint(state.points);           // 最高点(微气象取样点)
@@ -455,7 +455,9 @@
       });
     }
 
-    setDetectStatus('已更新 ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), false);
+    const updatedAt = fmtTime(new Date());
+    state.lastUpdatedTime = updatedAt; // 供语言切换后重设状态文本
+    setDetectStatus(t('status.updated', { time: updatedAt }), false);
     state.detecting = false;
   }
 
@@ -469,9 +471,9 @@
         properties: {
           mag: q.mag || 0,
           inside: inside,
-          popup: '<strong>M' + (q.mag != null ? q.mag.toFixed(1) : '?') + ' 地震</strong><br>'
-            + (q.place || '未知位置') + '<br>深度 ' + (q.depth || 0).toFixed(1) + 'km'
-            + (inside ? '<br><span style="color:#e74c3c;">⚠️ 位于监测缓冲区' + getBufferRadius() + 'km内</span>' : '')
+          popup: '<strong>' + t('popup.quake', { mag: (q.mag != null ? q.mag.toFixed(1) : '?') }) + '</strong><br>'
+            + (q.place || t('popup.unknown')) + '<br>' + t('popup.depth', { d: (q.depth || 0).toFixed(1) })
+            + (inside ? '<br><span style="color:#e74c3c;">' + t('popup.inBuffer', { km: getBufferRadius() }) + '</span>' : '')
             + '<br><span style="font-size:11px;color:#999;">' + new Date(q.time).toLocaleString('zh-CN') + '</span>'
         }
       };
@@ -499,9 +501,9 @@
         geometry: { type: 'Point', coordinates: [f.lng, f.lat] },
         properties: {
           inside: inside,
-          popup: '<strong>🔥 卫星山火热点</strong><br>'
+          popup: '<strong>' + t('popup.fire') + '</strong><br>'
             + 'FRP ' + Math.round(f.frp || 0) + ' MW'
-            + (inside ? '<br><span style="color:#e74c3c;">⚠️ 位于监测缓冲区' + getBufferRadius() + 'km内</span>' : '')
+            + (inside ? '<br><span style="color:#e74c3c;">' + t('popup.inBuffer', { km: getBufferRadius() }) + '</span>' : '')
             + '<br><span style="font-size:11px;color:#999;">' + (f.time || '') + '</span>'
         }
       };
@@ -546,62 +548,76 @@
     });
   }
 
+  /* 按 i18n key + 参数渲染预警文本(key 缺失时回退 text) */
+  function alertText(a) {
+    if (!a.key) return a.text || '';
+    const p = Object.assign({}, a.params);
+    if (a.key === 'alert.fire' && p.frp) p.frp = t('alert.fire.frp', { frp: p.frp }); // FRP 后缀按语言拼装
+    return t(a.key, p);
+  }
+
   /* ============================================================
    * 7. 风险面板: 红黄绿灯 + 预警列表
    * ============================================================ */
   function updateRiskPanel() {
     const alerts = [];
 
-    // 1) 灾害碰撞检测结果
-    state.hazardsAlerts.forEach((a) => alerts.push(a));
+    // 1) 灾害碰撞检测结果(i18n 渲染)
+    state.hazardsAlerts.forEach((a) => alerts.push(Object.assign({}, a, { text: alertText(a) })));
 
     // 2) 微气象风险
     const w = state.weatherData;
     if (w && w.status === 'ok') {
       // 失温预警: 体感 < 0°C
       if (w.windChill != null && w.windChill < 0) {
-        alerts.push({ level: 'danger', icon: '🥶', text: '最高点体感风寒 ' + w.windChill.toFixed(1) + '°C < 0°C, 存在失温风险, 需加强保暖', source: 'Open-Meteo' });
+        alerts.push({ level: 'danger', icon: '🥶', text: t('alert.wc.cold', { wc: w.windChill.toFixed(1) }), source: 'Open-Meteo' });
       } else if (w.windChill != null && w.windChill < 5) {
-        alerts.push({ level: 'warning', icon: '🧊', text: '最高点体感风寒 ' + w.windChill.toFixed(1) + '°C, 体感偏冷', source: 'Open-Meteo' });
+        alerts.push({ level: 'warning', icon: '🧊', text: t('alert.wc.mild', { wc: w.windChill.toFixed(1) }), source: 'Open-Meteo' });
       }
       // 阵风: ≥8级(62km/h)预警
       if (w.maxGust6h != null && w.maxGust6h >= 62) {
         alerts.push({
           level: w.maxGust6h >= 89 ? 'danger' : 'warning', icon: '💨',
-          text: '未来 6 小时阵风最大 ' + Math.round(w.maxGust6h) + ' km/h (≥' + (w.maxGust6h >= 89 ? '10级' : '8级') + '), 注意横风与失温', source: 'Open-Meteo'
+          text: t('alert.gust', {
+            g: Math.round(w.maxGust6h),
+            lv: t(w.maxGust6h >= 89 ? 'alert.gust.lv10' : 'alert.gust.lv8')
+          }),
+          source: 'Open-Meteo'
         });
       }
       // UV
       if (w.uv != null && w.uv >= 8) {
-        alerts.push({ level: 'warning', icon: '☀️', text: 'UV 指数 ' + w.uv.toFixed(1) + ', 高海拔紫外线强烈, 注意防晒', source: 'Open-Meteo' });
+        alerts.push({ level: 'warning', icon: '☀️', text: t('alert.uv', { uv: w.uv.toFixed(1) }), source: 'Open-Meteo' });
       }
       // 土壤湿度(泥泞/滑坡)
       if (w.soil != null && w.soil >= 0.55) {
-        alerts.push({ level: 'warning', icon: '🟤', text: '土壤湿度 ' + Math.round(w.soil * 100) + '%, 路面泥泞, 滑坡风险升高', source: 'Open-Meteo' });
+        alerts.push({ level: 'warning', icon: '🟤', text: t('alert.soil', { s: Math.round(w.soil * 100) }), source: 'Open-Meteo' });
       }
       // 天气代码
       const codeAlert = Weather.describeCode(w.code);
-      if (codeAlert) alerts.push({ level: codeAlert.level, icon: codeAlert.icon, text: codeAlert.text, source: 'Open-Meteo' });
+      if (codeAlert) {
+        alerts.push({ level: codeAlert.level, icon: codeAlert.icon, text: t('wx.code.' + codeAlert.key, null, codeAlert.text), source: 'Open-Meteo' });
+      }
     }
 
-    // 3) 数据源降级提示(灰色 info)
+    // 3) 数据源降级提示(灰色 info, i18n 渲染)
     if (state.quakeData.status === 'unreachable') {
-      alerts.push({ level: 'info', icon: '📡', text: state.quakeData.message, source: 'USGS' });
+      alerts.push({ level: 'info', icon: '📡', text: state.quakeData.i18nKey ? t(state.quakeData.i18nKey) : state.quakeData.message, source: 'USGS' });
     }
     if (state.fireData.status === 'degraded') {
-      alerts.push({ level: 'info', icon: '📡', text: state.fireData.message, source: 'NASA' });
+      alerts.push({ level: 'info', icon: '📡', text: state.fireData.i18nKey ? t(state.fireData.i18nKey, state.fireData.i18nParams) : state.fireData.message, source: 'NASA' });
     }
     if (w && w.status === 'unreachable') {
-      alerts.push({ level: 'info', icon: '📡', text: w.message, source: 'Open-Meteo' });
+      alerts.push({ level: 'info', icon: '📡', text: w.i18nKey ? t(w.i18nKey) : w.message, source: 'Open-Meteo' });
     }
     if (state.rainChecked && !state.rainFrames) {
-      alerts.push({ level: 'info', icon: '📡', text: 'RainViewer 雨带雷达数据源不可达, 雨带图层不可用', source: 'RainViewer' });
+      alerts.push({ level: 'info', icon: '📡', text: t('alert.rain.unreachable'), source: 'RainViewer' });
     }
 
     // 4) 渲染列表
     const container = document.getElementById('alertList');
     if (!alerts.length) {
-      container.innerHTML = '<div class="alert-item safe"><span>✅</span><span class="txt">暂无风险 · 周边 ' + getBufferRadius() + 'km 内未检测到灾害</span></div>';
+      container.innerHTML = '<div class="alert-item safe"><span>✅</span><span class="txt">' + t('alert.none', { km: getBufferRadius() }) + '</span></div>';
     } else {
       container.innerHTML = alerts.map((a) =>
         '<div class="alert-item ' + a.level + '">'
@@ -619,11 +635,11 @@
     const hasWarning = alerts.some((a) => a.level === 'warning');
     const dot = document.getElementById('riskDot');
     const label = document.getElementById('riskLabel');
-    if (hasDanger) { dot.className = 'risk-dot danger'; label.textContent = '综合风险: 高危'; }
-    else if (hasWarning) { dot.className = 'risk-dot warning'; label.textContent = '综合风险: 注意'; }
-    else { dot.className = 'risk-dot safe'; label.textContent = '综合风险: 安全'; }
+    if (hasDanger) { dot.className = 'risk-dot danger'; label.textContent = t('risk.danger'); }
+    else if (hasWarning) { dot.className = 'risk-dot warning'; label.textContent = t('risk.warning'); }
+    else { dot.className = 'risk-dot safe'; label.textContent = t('risk.safe'); }
 
-    // 数据源状态摘要
+    // 数据源状态摘要(源名保持专名不翻译)
     const src = document.getElementById('sourceStatus');
     const st = [];
     st.push(state.quakeData.status === 'ok' ? '✅ USGS' : (state.quakeData.status === 'unreachable' ? '❌ USGS' : '⏳ USGS'));
@@ -631,6 +647,11 @@
     st.push(w && w.status === 'ok' ? '✅ Open-Meteo' : (w && w.status === 'unreachable' ? '❌ Open-Meteo' : '⏳ Open-Meteo'));
     st.push(state.rainChecked ? (state.rainFrames ? '✅ RainViewer' : '❌ RainViewer') : '⏳ RainViewer');
     src.textContent = st.join(' · ');
+  }
+
+  /* 按当前语言格式化时间(检测状态"已更新"用) */
+  function fmtTime(d) {
+    return d.toLocaleTimeString(i18n.getLang() === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   }
 
   /* 检测状态指示 */
@@ -651,7 +672,7 @@
     setText('wxPeakEle', peak && peak[2] != null ? Math.round(peak[2]) + ' m' : '--');
     setText('wxTemp', w && w.tempC != null ? w.tempC.toFixed(1) + '°C' : '--');
     setText('wxGust', w && w.gustKmh != null ? Math.round(w.gustKmh) + ' km/h' : '--');
-    setText('wxUV', w && w.uv != null ? w.uv.toFixed(1) : (w && w.status === 'unreachable' ? '不可达' : '--'));
+    setText('wxUV', w && w.uv != null ? w.uv.toFixed(1) : (w && w.status === 'unreachable' ? t('wx.na') : '--'));
     setText('wxSoil', w && w.soil != null ? Math.round(w.soil * 100) + '%' : '--');
     setText('wxWc', w && w.windChill != null ? w.windChill.toFixed(1) + '°C' : '--');
     setText('wxGust6h', w && w.maxGust6h != null ? Math.round(w.maxGust6h) + ' km/h' : '--');
@@ -736,7 +757,7 @@
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (c) => '里程 ' + c.label + 'km @ 海拔 ' + Math.round(c.parsed.y) + 'm' } }
+          tooltip: { callbacks: { label: (c) => c.label + 'km @ ' + Math.round(c.parsed.y) + 'm' } }
         },
         scales: {
           x: {
@@ -827,11 +848,11 @@
     return el;
   }
 
-  /* 显示浮动标签: 文字「里程 Xkm @ 海拔 Ym」, 位置投影到红点上方 */
+  /* 显示浮动标签: 文字「X.Xkm @ Ym」(里程/海拔), 位置投影到红点上方 */
   function updateHoverLabel(chartIndex, p) {
     const dist = (state.chart && state.chart.data && state.chart.data.labels) ? state.chart.data.labels[chartIndex] : '?';
     const el = ensureHoverLabel();
-    el.textContent = '里程 ' + dist + 'km @ 海拔 ' + Math.round(p[2]) + 'm';
+    el.textContent = dist + 'km @ ' + Math.round(p[2]) + 'm'; // 精简格式, 不受语言影响
     positionHoverLabel([p[1], p[0]]);
     el.style.display = 'block';
     state.hoverLngLat = [p[1], p[0]]; // 记录当前坐标, 地图移动时跟随刷新
@@ -905,11 +926,11 @@
       if (!hasElevation) await Weather.fillElevation(points); // 无海拔 → 高程 API 补齐
       // badge 显示上传文件名(去扩展名), 如 my-trail.gpx → my-trail
       const trailName = (file.name || '上传轨迹').replace(/\.[^.]+$/, '');
-      showToast('📂 已加载轨迹: ' + file.name + ' (' + points.length + ' 点)');
+      showToast(t('toast.loaded.trail', { name: file.name, n: points.length }));
       loadTrail(points, trailName);
       switchView('hike'); // 上传完成后自动切回 Hike 视图(路线概况/预警/微气象在此)
     } catch (err) {
-      showToast('❌ 解析失败: ' + err.message);
+      showToast(t('toast.parse.fail', { msg: err.message }));
     }
   }
 
@@ -920,7 +941,7 @@
     const btn = document.getElementById('exportBtn');
     if (!btn) return;
     btn.disabled = true;
-    btn.textContent = '⏳ 生成中...';
+    btn.textContent = t('toast.exporting');
     try {
       if (typeof html2canvas === 'undefined') throw new Error('html2canvas 未加载');
       const canvas = await html2canvas(document.getElementById('app'), {
@@ -935,14 +956,14 @@
       a.download = 'trail-safety-report-' + new Date().toISOString().slice(0, 10) + '.png';
       a.href = url;
       a.click();
-      showToast('📄 报告已生成并下载');
+      showToast(t('toast.exported'));
     } catch (e) {
       // MapLibre 的 WebGL canvas 通常无法被 html2canvas 读取(跨域纹理污染) → 降级为打印
-      showToast('截图受 WebGL/跨域瓦片影响, 已切换为打印模式 (Ctrl+P 保存 PDF)');
+      showToast(t('toast.print'));
       window.print();
     } finally {
       btn.disabled = false;
-      btn.textContent = '📄 导出报告';
+      btn.textContent = t('export.btn');
     }
   }
 
@@ -973,7 +994,7 @@
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-            showToast('🔄 检测到新版本, 正在刷新...');
+            showToast(t('toast.sw.reload'));
             setTimeout(() => location.reload(), 600);
           }
         });
@@ -993,44 +1014,6 @@
       name: '雨崩·神湖徒步',
       points: () => loadYubengPoints() // 真实 GPX(异步 fetch+解析), 失败降级内置精简点
     },
-    fuji: {
-      name: '富士山吉田路线',
-      // 起点: 富士吉田口五合目 (35.4877, 138.8078) → 山顶 (35.3606, 138.7274)
-      points: () => {
-        const pts = [];
-        const sLat = 35.4877, sLng = 138.8078;
-        const eLat = 35.3606, eLng = 138.7274;
-        const steps = 120;
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          const lat = sLat + (eLat - sLat) * t + Math.sin(t * 12) * 0.004;
-          const lng = sLng + (eLng - sLng) * t + Math.cos(t * 9) * 0.003;
-          // 海拔: 五合目 2305m → 山顶 3776m → 回落
-          const ele = 2305 + 1471 * Math.sin(t * Math.PI) + 120 * Math.sin(t * 5) + 40 * Math.cos(t * 3);
-          pts.push([lat, lng, Math.round(ele)]);
-        }
-        return pts;
-      }
-    },
-    halfdome: {
-      name: '优胜美地半圆顶',
-      // 起点: 优胜美地谷地 trailhead (37.7427, -119.5819) → 半圆顶 (37.7462, -119.5332)
-      points: () => {
-        const pts = [];
-        const sLat = 37.7427, sLng = -119.5819;
-        const eLat = 37.7462, eLng = -119.5332;
-        const steps = 120;
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          const lat = sLat + (eLat - sLat) * t + Math.sin(t * 11) * 0.0025;
-          const lng = sLng + (eLng - sLng) * t + Math.cos(t * 8) * 0.002;
-          // 海拔: 谷底 1219m → 穹顶 2695m
-          const ele = 1219 + 1476 * Math.sin(t * Math.PI) + 100 * Math.sin(t * 6);
-          pts.push([lat, lng, Math.round(ele)]);
-        }
-        return pts;
-      }
-    }
   };
 
   /* 视图切换: 联动左侧导航高亮 + 侧栏面板显隐 */
@@ -1057,7 +1040,7 @@
         const pts = await trail.points(); // 支持同步数组与异步 Promise(雨崩 GPX)
         loadTrail(pts, trail.name); // badge 同步为路线名
         switchView('hike');
-        showToast('🧭 已加载「' + trail.name + '」, 正在检测周边灾害...');
+        showToast(t('toast.route', { name: trail.name }));
       });
     });
   }
@@ -1066,14 +1049,31 @@
    * 15. 启动
    * ============================================================ */
   function init() {
+    i18n.init(); // 读取 localStorage 语言偏好并应用静态文案
     bindUpload();
     bindLayerPopups();
     bindNav();
 
+    // 语言切换按钮: 中文界面显示「EN」, 英文界面显示「中」, 即时生效并持久化
+    const langBtn = document.getElementById('langBtn');
+    if (langBtn) {
+      langBtn.addEventListener('click', () => {
+        i18n.setLang(i18n.getLang() === 'zh' ? 'en' : 'zh');
+      });
+    }
+    // 语言切换后刷新动态面板(预警/微气象/检测状态)
+    i18n.onChange(() => {
+      updateRiskPanel();
+      updateWeatherPanel();
+      if (state.points) {
+        setDetectStatus(state.detecting ? t('status.detecting') : t('status.updated', { time: state.lastUpdatedTime || '' }), state.detecting);
+      }
+    });
+
     // 快捷键 R: 手动刷新风险检测
     document.addEventListener('keydown', (e) => {
       if ((e.key === 'r' || e.key === 'R') && state.points) {
-        showToast('🔄 手动刷新灾害检测...');
+        showToast(t('toast.refresh'));
         runHazardChecks();
       }
     });
@@ -1083,7 +1083,7 @@
     // 自动加载雨崩徒步示例并触发检测(等地图样式加载完成)
     setTimeout(() => {
       loadYubeng();
-      showToast('🏞️ 已加载雨崩徒步示例, 正在检测周边灾害...');
+      showToast(t('toast.yubeng'));
     }, 400);
   }
 
