@@ -35,6 +35,7 @@ ssh root@173.242.116.220 "cd /var/www/html/trailsense && tar xzf /tmp/trailsense
 > 版本化: 每次改版需同步 bump 三处 — `sw.js` CACHE_NAME、`app.js` register URL `sw.js?v=N`、`index.html` 资源 `?v=N`。
 
 ## 部署记录
+- **2026-08-16 v20** (ab1ef6e): 图层控件改为右上角弹出式(缩放控件下方 🗺️ toggle + 点外部收起) + PDF 报告 5 页重排(P1 摘要文本 / P2 横向 Map / P3 横向 Chart / P4 灾害卡片截图 / P5 微气象卡片截图)。nginx 配置未变。版本号三处同步 v20。
 - **2026-08-16 v19** (978f1b4): 浅色主题对比度修复(--on-accent 红底白字/MapLibre 控件主题化) + 移动端 480px 排版 + 移除 localStorage 状态恢复 + PDF 重排(P2 横版纯地图/P3 横版纯图表)。nginx 配置未变(md5 与 deploy/nginx-trailsense.conf 一致)。
 
 ## HTTPS 证书
