@@ -11,28 +11,22 @@
     <title>🏔️ Traveler Guide · 你好啊旅行者</title>
 
     <!-- ===== PWA ===== -->
-    <link rel="manifest" href="manifest.json?v=8" />
+    <link rel="manifest" href="manifest.json?v=9" />
     <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
     <link rel="apple-touch-icon" href="icons/icon.svg" />
 
-    <!-- ===== MapLibre GL JS 4.7.1 (CDN, SRI 完整性校验) ===== -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous" />
-    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
+    <!-- ===== 核心库: 本地 vendor 自托管(主源, 快且稳, 不依赖外部 CDN) ===== -->
+    <!-- 2026-08-16: 大陆网络 CDN 不稳定(unpkg 8s/jsdelivr 超时)导致地图黑屏, 改为本地优先 -->
+    <link rel="stylesheet" href="vendor/maplibre-gl.css" />
+    <script src="vendor/maplibre-gl.js"></script>
+    <script src="vendor/turf.min.js"></script>
+    <script src="vendor/chart.umd.min.js"></script>
 
-    <!-- ===== Turf.js 6 (CDN, SRI) ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js" integrity="sha384-82q0nm29xZzIo5BMtDYnh2/NxeO6FoaK1S/0nF84w3cEsqbBfun3JdMyDVYWfVY5" crossorigin="anonymous"></script>
+    <!-- ===== html2canvas / jsPDF (本地 vendor, defer 非关键: 仅报告导出时使用) ===== -->
+    <script defer src="vendor/html2canvas.min.js"></script>
+    <script defer src="vendor/jspdf.umd.min.js"></script>
 
-    <!-- ===== Chart.js 4.4 (CDN, SRI) ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
-
-    <!-- ===== html2canvas / jsPDF (CDN, SRI, defer 非关键: 仅报告导出时使用, 不阻塞首屏) ===== -->
-    <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
-
-
-    <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
-
-    <!-- ===== CDN 备用源: 主源(jsdelivr)加载失败时同步切换备用 CDN, 提升国内可达性 ===== -->
-    <!-- SRI 注意: 备用源(unpkg)与主源(jsdelivr)均直接提供 npm 包原文件, 字节一致, 同一 hash 通用 -->
+    <!-- ===== CDN 备用源: 本地 vendor 加载失败时切换 CDN(双保险) ===== -->
     <script>
         if (typeof maplibregl === 'undefined') document.write('<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"><\/script>');
         if (typeof turf === 'undefined') document.write('<script src="https://unpkg.com/@turf/turf@6/turf.min.js" integrity="sha384-82q0nm29xZzIo5BMtDYnh2/NxeO6FoaK1S/0nF84w3cEsqbBfun3JdMyDVYWfVY5" crossorigin="anonymous"><\/script>');
@@ -53,7 +47,7 @@
     </script>
 
     <!-- ===== 本地样式 ===== -->
-    <link rel="stylesheet" href="css/style.css?v=8" />
+    <link rel="stylesheet" href="css/style.css?v=9" />
 </head>
 <body>
 
@@ -245,10 +239,10 @@
 <div id="toast"></div>
 
 <!-- ===== 本地 JS: 依赖顺序 i18n → geo → hazards → weather → app ===== -->
-<script src="js/i18n.js?v=8"></script>
-<script src="js/geo.js?v=8"></script>
-<script src="js/hazards.js?v=8"></script>
-<script src="js/weather.js?v=8"></script>
-<script src="js/app.js?v=8"></script>
+<script src="js/i18n.js?v=9"></script>
+<script src="js/geo.js?v=9"></script>
+<script src="js/hazards.js?v=9"></script>
+<script src="js/weather.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>

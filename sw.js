@@ -6,7 +6,7 @@
  *       保证灾害数据始终是实时抓取。
  * ============================================================ */
 
-const CACHE_NAME = 'trail-sense-v7'; // app.js 大改(默认2D/横向报告页), bump 强制刷新缓存 // 新增 js/3d.js, bump 强制刷新缓存 // 版本 bump(jsPDF 走 CDN 不入缓存, 保险刷新) // 新增 i18n.js, bump 版本强制刷新缓存
+const CACHE_NAME = 'trail-sense-v9'; // 本地 vendor 化 + HTML 网络优先, bump 强制更新
 
 /* 应用壳: 首次访问即离线可用所需的全部本地资源 */
 const APP_SHELL = [
@@ -19,6 +19,12 @@ const APP_SHELL = [
   './js/geo.js',
   './js/hazards.js',
   './js/weather.js',
+  './vendor/maplibre-gl.js',
+  './vendor/maplibre-gl.css',
+  './vendor/turf.min.js',
+  './vendor/chart.umd.min.js',
+  './vendor/html2canvas.min.js',
+  './vendor/jspdf.umd.min.js',
   './manifest.json',
   './icons/icon.svg'
 ];
@@ -64,7 +70,24 @@ self.addEventListener('fetch', (event) => {
     // CACHE_NAME bump 也无法触发更新 (浏览器靠字节差异检测 SW 更新)
     if (url.pathname.endsWith('/sw.js')) return;
 
-    // 同源应用壳: 缓存优先 → 网络兜底并回填缓存
+    // HTML 导航请求: 网络优先(每次拿最新页面), 网络失败才回退缓存 —
+    // 否则旧 SW 缓存优先会一直给用户返回旧版 index.html(改版后看不到新功能)
+    if (req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
+      event.respondWith(
+        fetch(req)
+          .then((res) => {
+            if (res && res.status === 200) {
+              const clone = res.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+            return res;
+          })
+          .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+      );
+      return;
+    }
+
+    // 同源应用壳(js/css/vendor 等): 缓存优先 → 网络兜底并回填缓存
     event.respondWith(
       caches.match(req).then((cached) => {
         if (cached) return cached;

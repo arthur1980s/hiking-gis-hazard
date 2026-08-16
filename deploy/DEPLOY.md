@@ -144,3 +144,13 @@ ssh root@173.242.116.220
 - **CF 缓存坑**: 无参数请求拿到旧版(29300B app.js), 带 ?v= 拿到新版(58863B) — 必须资源加版本号 + HTML no-cache
 - **大陆网络 CDN 现状**: jsdelivr 000 不可达, unpkg 200 可用 — 依赖 document.write 备用源降级(已验证 unpkg 文件 SRI 与 jsdelivr 一致)
 - 部署: tar 打包 → scp → 解压 chown → reload nginx
+
+## 线上 v9 修复 (2026-08-16, 两个线上故障)
+### 故障1: 加载旧版(需手动清缓存)
+- 根因: sw.js 对同源资源缓存优先, 包括 index.html → 旧 SW 一直返回旧页面
+- 修复: sw.js 对 HTML 导航请求改**网络优先**(fetch 成功回填缓存, 失败才回退缓存); js/css/vendor 仍缓存优先
+### 故障2: 新版地图黑色
+- 根因: 核心库走外部 CDN(unpkg 8s/jsdelivr 超时), 大陆网络加载失败 → maplibregl undefined → 地图黑屏
+- 修复: **核心库自托管到 vendor/**(maplibre-gl/turf/chart/html2canvas/jspdf 共 6 个文件, SRI 与 CDN 一致), index.html 改本地优先 + CDN 备用(document.write); SW APP_SHELL 加 vendor
+- 验证: 线上实测 maplibregl=object(本地加载)、TrailSense 存在、雨崩轨迹 4.3km/4459m、地图 canvas 渲染、markers 4 个
+- 版本: CACHE_NAME v9, index.html 资源 ?v=9
