@@ -1123,16 +1123,31 @@
       let yL = lm + 8, yR = lm + 8;
 
       // 上部: 地图大图(横贯页宽, 左右小边距)
-      // 修复: ①先强制重绘并等待(WebGL preserveDrawingBuffer 保证缓冲可读)
-      //       ②OpenTopoMap 瓦片无 CORS 头 → canvas 被污染 toDataURL 抛错,
-      //         截图前临时切到带 CORS 的高德底图, 截完恢复原底图
+      // 修复: OpenTopoMap(底图+等高线)/GIBS 瓦片无 CORS 头 → canvas 被污染
+      //   toDataURL 抛 SecurityError。思路: 截图期间临时隐藏所有无 CORS 图层,
+      //   底图切到高德(带 CORS), 等地图 idle(瓦片渲染完成)后再截, 最后恢复。
       let mapImgOk = false;
       const prevBasemap = currentBasemap;
-      const tempBasemap = (prevBasemap === 'topo') ? 'amap' : prevBasemap; // 地形无CORS→切高德
+      const prevLayerVis = {};
+      const NO_CORS_LAYERS = ['contour', 'gibs-fires', 'rain-layer']; // 无 CORS 头图层
       try {
+        // 1) 记录并隐藏无 CORS 图层(等高线/山火瓦片/雨带)
+        NO_CORS_LAYERS.forEach((id) => {
+          if (map.getLayer(id)) {
+            prevLayerVis[id] = map.getLayoutProperty(id, 'visibility');
+            map.setLayoutProperty(id, 'visibility', 'none');
+          }
+        });
+        // 2) 底图临时切到高德(有 CORS; 地形 OpenTopoMap 无 CORS)
+        const tempBasemap = (prevBasemap === 'topo') ? 'amap' : prevBasemap;
         if (tempBasemap !== prevBasemap) switchBasemap(tempBasemap);
-        map.triggerRepaint(); // 强制重绘, 确保最新帧写入缓冲
-        await new Promise((r) => setTimeout(r, 500));
+        // 3) 等地图完全渲染(瓦片加载完成)再截图
+        await new Promise((resolve) => {
+          let done = false;
+          const finish = () => { if (!done) { done = true; resolve(); } };
+          map.once('idle', finish);          // 瓦片/图层渲染完成
+          setTimeout(finish, 3000);          // 兜底超时(网络慢也不阻塞导出)
+        });
         const mapCanvas = map.getCanvas();
         const mapImg = mapCanvas.toDataURL('image/png');
         const mw = lw - 2 * lm;
@@ -1148,8 +1163,13 @@
         pdf.text('Map image unavailable (canvas tainted)', lm, lm + 8);
         yL = lm + 14; yR = lm + 14;
       } finally {
-        // 恢复原底图(地形/用户选择的底图)
+        // 4) 恢复: 底图 + 原图层显隐
         if (tempBasemap !== prevBasemap) switchBasemap(prevBasemap);
+        NO_CORS_LAYERS.forEach((id) => {
+          if (map.getLayer(id) && prevLayerVis[id] != null) {
+            map.setLayoutProperty(id, 'visibility', prevLayerVis[id]);
+          }
+        });
       }
 
       // ---- 左栏: 路线概况(海拔剖面图 + 轨迹统计) ----
@@ -1306,8 +1326,8 @@
     if (!('serviceWorker' in navigator)) return;
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
-    // 版本化注册: 新 URL(sw.js?v=14)绕过旧 SW 缓存, 强制更新 SW
-    navigator.serviceWorker.register('sw.js?v=14').then((reg) => {
+    // 版本化注册: 新 URL(sw.js?v=15)绕过旧 SW 缓存, 强制更新 SW
+    navigator.serviceWorker.register('sw.js?v=15').then((reg) => {
       // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
       // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
       reg.addEventListener('updatefound', () => {
