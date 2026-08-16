@@ -42,6 +42,16 @@
         if (!document.querySelector('link[href*="maplibre-gl.css"]')) document.write('<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous" />');
     </script>
 
+    <!-- ===== Import Map: 3D 模块依赖映射 (three + addons, 供 js/3d.js 动态 import) ===== -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/"
+            }
+        }
+    </script>
+
     <!-- ===== 本地样式 ===== -->
     <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -105,6 +115,8 @@
                 <button data-layer="buffer" class="active" data-i18n-title="layer.buffer.title" title="10km 监测缓冲区">⭕ <span data-i18n="layer.buffer">缓冲区</span></button>
                 <button data-layer="contour" data-i18n-title="layer.contour.title" title="等高线叠加层">🗺️ <span data-i18n="layer.contour">等高线</span></button>
                 <button data-layer="rain" data-i18n-title="layer.rain.title" title="RainViewer 雨带雷达(2小时推演)">🌧️ <span data-i18n="layer.rain">雨带</span></button>
+                <span class="sep"></span>
+                <button id="btn3d" data-i18n-title="btn.3d.title" title="3D 地形与模型浏览(按需加载)">🧊 <span data-i18n="btn.3d">3D</span></button>
             </div>
 
             <!-- 地图状态栏 -->

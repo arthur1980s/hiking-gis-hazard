@@ -132,6 +132,19 @@ const I18N = {
     'popup.fire': '🔥 卫星山火热点',
     'buffer.label': '📡 {km}km 监测区',
 
+    /* 3D 模式 */
+    'btn.3d': '3D',
+    'btn.3d.title': '3D 地形与模型浏览(按需加载)',
+    'toast.3d.on': '🧊 3D 模式已开启',
+    'toast.3d.off': '🧊 3D 模式已关闭',
+    'toast.3d.unavailable': '⚠️ 3D 依赖加载失败, 已保持 2D 模式',
+    'popup.3d.peak': '神湖 · 山峰模型',
+    'popup.3d.start': '起点 3D 标记',
+    'popup.3d.end': '终点 3D 标记',
+    'popup.3d.trailpeak': '轨迹最高点',
+    'popup.3d.quake': '3D 地震点 M{mag}',
+    'popup.3d.fire': '3D 山火热点',
+
     /* PDF 报告 */
     'report.title': '徒步风险评估报告',
     'report.stats': '轨迹统计',
@@ -276,6 +289,19 @@ const I18N = {
     'popup.inBuffer': '⚠️ Inside {km}km monitoring buffer',
     'popup.fire': '🔥 Satellite fire hotspot',
     'buffer.label': '📡 {km}km zone',
+
+    /* 3D 模式 */
+    'btn.3d': '3D',
+    'btn.3d.title': '3D terrain & models (on demand)',
+    'toast.3d.on': '🧊 3D mode on',
+    'toast.3d.off': '🧊 3D mode off',
+    'toast.3d.unavailable': '⚠️ 3D deps failed, staying 2D',
+    'popup.3d.peak': 'Holy Lake · Peak Model',
+    'popup.3d.start': 'Start 3D Marker',
+    'popup.3d.end': 'End 3D Marker',
+    'popup.3d.trailpeak': 'Trail Peak',
+    'popup.3d.quake': '3D Quake M{mag}',
+    'popup.3d.fire': '3D Fire Hotspot',
 
     /* PDF 报告 */
     'report.title': 'Hiking Risk Assessment Report',

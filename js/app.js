@@ -65,6 +65,9 @@
     },
     center: [98.79, 28.37], // [lng, lat] 默认视野: 云南雨崩(梅里雪山)
     zoom: 12,
+    pitch: 45,   // 初始俯仰角(3D 视角, 2D 平面地图亦可倾斜浏览)
+    maxPitch: 85, // 最大俯仰角
+    canvasContextAttributes: { antialias: true }, // 抗锯齿(3D 渲染必需)
     attributionControl: true
   });
 
@@ -1237,6 +1240,22 @@
     bindUpload();
     bindLayerPopups();
     bindNav();
+
+    // 3D 模式按钮: 动态 import js/3d.js(ES Module, three/plugin 按需加载), 失败优雅降级 2D
+    const btn3d = document.getElementById('btn3d');
+    if (btn3d) {
+      btn3d.addEventListener('click', async () => {
+        try {
+          // 动态 import: 非模块脚本中相对路径会相对脚本 URL 解析, 裸说明符会走 importmap;
+          // 用 document.baseURI 构造绝对 URL 最稳(兼容子路径部署), three 由 importmap 解析
+          const mod = await import(new URL('js/3d.js', document.baseURI).href);
+          await mod.toggle3D();
+        } catch (e) {
+          console.warn('3D 模块加载失败, 保持 2D 模式:', e);
+          showToast(t('toast.3d.unavailable'));
+        }
+      });
+    }
 
     // 语言切换按钮: 中文界面显示「EN」, 英文界面显示「中」, 即时生效并持久化
     const langBtn = document.getElementById('langBtn');
