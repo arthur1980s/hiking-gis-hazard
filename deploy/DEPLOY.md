@@ -136,3 +136,11 @@ ssh root@173.242.116.220
 ### 部署权限坑 (再次踩到)
 - 用 tar 覆盖部署后 **必须** `chown -R root:root` + `chmod -R 755` — 否则 tar 保留本地文件属主,
   nginx worker (www-data) 读不了 → **403 Permission denied** (症状: 突然全部 403, 但 TLS 正常)
+
+## 线上部署更新 (2026-08-16, v8)
+- 资源版本号: index.html 本地资源引用全部加 ?v=8(每次改版 bump, 配合 CF 缓存)
+- nginx: HTML no-cache(CF 不再缓存 HTML, 每次回源), 带版本号静态资源 7d 长缓存
+- CSP 新增 https://s3.amazonaws.com (3D 地形 DEM 瓦片)
+- **CF 缓存坑**: 无参数请求拿到旧版(29300B app.js), 带 ?v= 拿到新版(58863B) — 必须资源加版本号 + HTML no-cache
+- **大陆网络 CDN 现状**: jsdelivr 000 不可达, unpkg 200 可用 — 依赖 document.write 备用源降级(已验证 unpkg 文件 SRI 与 jsdelivr 一致)
+- 部署: tar 打包 → scp → 解压 chown → reload nginx
