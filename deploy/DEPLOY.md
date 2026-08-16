@@ -154,3 +154,11 @@ ssh root@173.242.116.220
 - 修复: **核心库自托管到 vendor/**(maplibre-gl/turf/chart/html2canvas/jspdf 共 6 个文件, SRI 与 CDN 一致), index.html 改本地优先 + CDN 备用(document.write); SW APP_SHELL 加 vendor
 - 验证: 线上实测 maplibregl=object(本地加载)、TrailSense 存在、雨崩轨迹 4.3km/4459m、地图 canvas 渲染、markers 4 个
 - 版本: CACHE_NAME v9, index.html 资源 ?v=9
+
+## v12 部署 (2026-08-16, 5项需求)
+1. 默认地形底图(currentBasemap='topo')+ 默认英文(lang='en')
+2. 3D 库本地化: three.module.js/three-addons/maplibre-three-plugin 下载到 vendor/, importmap 指向本地(线上 3D 失效根因: three 从 jsdelivr CDN 大陆不可达)
+3. 浅色主题: data-theme 切换(☀️/🌙), localStorage('theme') 持久化, 默认 dark
+4. PDF 第2页地图修复: preserveDrawingBuffer + triggerRepaint 强制重绘, 失败降级文字不静默丢失
+5. badge i18n: trail.name.yubeng 中英键, 英文显示 'Yubeng · Holy Lake Hike'
+CSP 补充: connect-src 加 s3.amazonaws.com(3D DEM 瓦片走 fetch, 之前只有 img-src 不够)

@@ -21,7 +21,52 @@
     --radius: 16px;
     --text: #e8e8e8;
     --text-dim: rgba(255, 255, 255, 0.35);
-    --border: rgba(255, 255, 255, 0.06);
+    --border: var(--soft-bg);
+    /* 主题可切换变量(暗色默认; [data-theme=light] 覆盖) */
+    --nav-bg: rgba(26, 26, 46, 0.92);
+    --toast-bg: rgba(26, 26, 46, 0.96);
+    --panel-bg: rgba(16, 16, 30, 0.94);
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --soft-bg: rgba(255, 255, 255, 0.06);
+    --btn-bg: rgba(255, 255, 255, 0.07);
+    --border-2: rgba(255, 255, 255, 0.08);
+    --border-3: rgba(255, 255, 255, 0.12);
+    --btn-border: rgba(255, 255, 255, 0.15);
+    --text-2: rgba(255, 255, 255, 0.45);
+    --text-3: rgba(255, 255, 255, 0.3);
+    --text-4: rgba(255, 255, 255, 0.55);
+    --text-5: rgba(255, 255, 255, 0.85);
+    --statusbar-bg: rgba(10, 10, 15, 0.65);
+    --label-bg: rgba(10, 10, 15, 0.88);
+    --control-bar-bg: rgba(0, 0, 0, 0.6);
+    --map-bg: #0d0d1a;
+}
+
+/* ===================== 浅色主题覆盖 ===================== */
+[data-theme="light"] {
+    --bg: #f5f6fa;
+    --panel: #ffffff;
+    --primary: #eef0f5;
+    --text: #1a1a2e;
+    --text-dim: rgba(26, 26, 46, 0.45);
+    --border: rgba(0, 0, 0, 0.08);
+    --nav-bg: rgba(255, 255, 255, 0.92);
+    --toast-bg: rgba(255, 255, 255, 0.96);
+    --panel-bg: rgba(255, 255, 255, 0.96);
+    --card-bg: rgba(0, 0, 0, 0.03);
+    --soft-bg: rgba(0, 0, 0, 0.05);
+    --btn-bg: rgba(0, 0, 0, 0.06);
+    --border-2: rgba(0, 0, 0, 0.1);
+    --border-3: rgba(0, 0, 0, 0.15);
+    --btn-border: rgba(0, 0, 0, 0.2);
+    --text-2: rgba(26, 26, 46, 0.55);
+    --text-3: rgba(26, 26, 46, 0.4);
+    --text-4: rgba(26, 26, 46, 0.65);
+    --text-5: rgba(26, 26, 46, 0.85);
+    --statusbar-bg: rgba(255, 255, 255, 0.8);
+    --label-bg: rgba(255, 255, 255, 0.92);
+    --control-bar-bg: rgba(255, 255, 255, 0.75);
+    --map-bg: #dfe3ea;
 }
 
 html, body {
@@ -47,7 +92,7 @@ body {
 
 /* ===================== 顶部导航栏 ===================== */
 .navbar {
-    background: rgba(26, 26, 46, 0.92);
+    background: var(--nav-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     padding: 12px 20px;
@@ -95,7 +140,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--soft-bg);
     padding: 6px 16px 6px 12px;
     border-radius: 30px;
     font-size: 13px;
@@ -130,35 +175,35 @@ body {
 .map-wrapper {
     flex: 1;
     position: relative;
-    background: #0d0d1a;
+    background: var(--map-bg);
     min-width: 0;
 }
 
 #map {
     width: 100%;
     height: 100%;
-    background: #0d0d1a;
+    background: var(--map-bg);
 }
 
 /* Leaflet 控件暗黑化 */
 .leaflet-control-zoom a {
     background: rgba(20, 20, 40, 0.85) !important;
     color: #ddd !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--border-3) !important;
 }
 
 .leaflet-control-attribution {
-    background: rgba(10, 10, 15, 0.6) !important;
-    color: rgba(255, 255, 255, 0.35) !important;
+    background: var(--label-bg) !important;
+    color: var(--text-dim) !important;
     font-size: 9px !important;
 }
 
-.leaflet-control-attribution a { color: rgba(255, 255, 255, 0.45) !important; }
+.leaflet-control-attribution a { color: var(--text-2) !important; }
 
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
     background: #16162a;
     color: #e8e8e8;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-2);
 }
 
 .leaflet-popup-content { font-size: 12px; }
@@ -175,24 +220,24 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 500;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--control-bar-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     padding: 10px 16px;
     border-radius: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-2);
+    box-shadow: 0 8px 24px var(--control-bar-bg);
     max-width: 92%;
 }
 
 .map-overlay-controls .sep {
     width: 1px;
     height: 20px;
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--border-3);
 }
 
 .map-overlay-controls button {
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--btn-bg);
     border: none;
     color: #ccc;
     padding: 6px 13px;
@@ -221,14 +266,14 @@ body {
     left: 12px;
     bottom: 12px;
     z-index: 490;
-    background: rgba(10, 10, 15, 0.65);
+    background: var(--statusbar-bg);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--soft-bg);
     border-radius: 10px;
     padding: 5px 12px;
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.55);
+    color: var(--text-4);
     font-variant-numeric: tabular-nums;
     pointer-events: none;
 }
@@ -242,7 +287,7 @@ body {
     border-radius: 50% 50% 50% 0; /* 圆角切出三角尾 */
     transform: rotate(-45deg);    /* 旋转使尖端朝下 */
     border: 2px solid #ffffff;    /* 白色描边 */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 8px var(--control-bar-bg);
 }
 
 /* 内层白点(模拟定位针中心孔) */
@@ -266,7 +311,7 @@ body {
     position: absolute;
     z-index: 480; /* 位于地图之上、悬浮控件之下 */
     transform: translate(-50%, -140%); /* 显示在红点上方 */
-    background: rgba(10, 10, 15, 0.88);
+    background: var(--label-bg);
     border: 1px solid rgba(233, 69, 96, 0.45);
     color: #fff;
     font-size: 11px;
@@ -276,14 +321,14 @@ body {
     white-space: nowrap;
     pointer-events: none;
     display: none; /* 默认隐藏, hover 时显示 */
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 4px 14px var(--control-bar-bg);
     font-variant-numeric: tabular-nums;
 }
 
 /* ===================== 侧栏 ===================== */
 .side-panel {
     width: 380px;
-    background: rgba(16, 16, 30, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-left: 1px solid var(--border);
@@ -303,10 +348,10 @@ body {
 .app-nav {
     width: 88px;
     flex-shrink: 0;
-    background: rgba(16, 16, 30, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -325,7 +370,7 @@ body {
 .nav-group + .nav-group {
     margin-top: 16px;
     padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--soft-bg);
 }
 
 /* 导航项: 64px 高, 24px 图标在上 + 13px 文字在下 (Gaia 结构) */
@@ -340,7 +385,7 @@ body {
     background: transparent;
     border: none;
     border-radius: 12px;
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--text-2);
     font-family: inherit;
     cursor: pointer;
     transition: 0.2s;
@@ -351,8 +396,8 @@ body {
 .nav-item span { font-size: 11px; letter-spacing: 0.3px; }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.85);
+    background: var(--soft-bg);
+    color: var(--text-5);
 }
 
 /* 激活项: 强调色圆角高亮 + 左侧 3px 竖条 (Gaia 激活态暗黑化) */
@@ -386,13 +431,13 @@ body {
 /* ===================== Discover 探索面板 ===================== */
 .discover-intro {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-2);
     line-height: 1.7;
 }
 
 .discover-tip {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-3);
     line-height: 1.8;
 }
 
@@ -417,17 +462,17 @@ body {
 
 .route-sub {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-4);
     margin-top: 2px;
 }
 
 .route-load { width: 100%; }
 
 .card {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--card-bg);
     border-radius: var(--radius);
     padding: 14px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--card-bg);
 }
 
 .card-title {
@@ -445,7 +490,7 @@ body {
     margin-left: auto;
     font-size: 10px;
     letter-spacing: 0;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-2);
 }
 
 .card-title .status.busy {
@@ -457,13 +502,13 @@ body {
 
 /* ===================== 上传区 ===================== */
 .upload-zone {
-    border: 2px dashed rgba(255, 255, 255, 0.12);
+    border: 2px dashed var(--border-3);
     border-radius: 12px;
     padding: 20px 14px;
     text-align: center;
     cursor: pointer;
     transition: 0.3s;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--card-bg);
 }
 
 .upload-zone:hover, .upload-zone.dragover {
@@ -472,8 +517,8 @@ body {
 }
 
 .upload-zone .big-icon { font-size: 34px; display: block; margin-bottom: 4px; }
-.upload-zone p { font-size: 13px; color: rgba(255, 255, 255, 0.5); }
-.upload-zone .hint { font-size: 11px; color: rgba(255, 255, 255, 0.25); }
+.upload-zone p { font-size: 13px; color: var(--text-2); }
+.upload-zone .hint { font-size: 11px; color: var(--text-3); }
 
 .upload-actions {
     margin-top: 10px;
@@ -485,8 +530,8 @@ body {
 
 .buffer-select {
     margin-left: auto;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--soft-bg);
+    border: 1px solid var(--border-3);
     color: #ccc;
     border-radius: 30px;
     padding: 5px 10px;
@@ -508,7 +553,7 @@ body {
 
 .trail-stat-item {
     text-align: center;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--card-bg);
     padding: 8px 2px;
     border-radius: 10px;
 }
@@ -535,7 +580,7 @@ body {
 /* ===================== 预警列表 ===================== */
 .source-status {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-4);
     margin-bottom: 8px;
     line-height: 1.6;
 }
@@ -557,7 +602,7 @@ body {
     align-items: flex-start;
     gap: 10px;
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--card-bg);
     border-radius: 10px;
     font-size: 12.5px;
     line-height: 1.5;
@@ -572,18 +617,18 @@ body {
 
 .alert-item .tag {
     font-size: 10px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--soft-bg);
     padding: 2px 8px;
     border-radius: 20px;
     flex-shrink: 0;
     margin-top: 1px;
-    color: rgba(255, 255, 255, 0.55);
+    color: var(--text-4);
 }
 
 .alert-item .time {
     display: block;
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-3);
     margin-top: 2px;
 }
 
@@ -595,7 +640,7 @@ details.firms-settings {
 
 details.firms-settings summary {
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--text-2);
     user-select: none;
     transition: 0.2s;
 }
@@ -612,8 +657,8 @@ details.firms-settings summary:hover { color: var(--accent); }
 .firms-row input {
     flex: 1;
     min-width: 0;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--soft-bg);
+    border: 1px solid var(--border-3);
     border-radius: 10px;
     padding: 7px 10px;
     color: #fff;
@@ -626,7 +671,7 @@ details.firms-settings summary:hover { color: var(--accent); }
 .firms-hint {
     margin-top: 6px;
     font-size: 10.5px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-3);
     line-height: 1.5;
 }
 
@@ -640,7 +685,7 @@ details.firms-settings summary:hover { color: var(--accent); }
 
 .wx-item {
     text-align: center;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--card-bg);
     padding: 7px 2px;
     border-radius: 9px;
 }
@@ -658,8 +703,8 @@ details.firms-settings summary:hover { color: var(--accent); }
 .windchill-calc input {
     flex: 1;
     min-width: 58px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--soft-bg);
+    border: 1px solid var(--border-2);
     border-radius: 10px;
     padding: 8px 10px;
     color: #fff;
@@ -674,7 +719,7 @@ details.firms-settings summary:hover { color: var(--accent); }
     font-size: 20px;
     padding: 6px 14px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--border);
     min-width: 70px;
     text-align: center;
     white-space: nowrap;
@@ -686,14 +731,14 @@ details.firms-settings summary:hover { color: var(--accent); }
 .wc-note {
     margin-top: 8px;
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-3);
     line-height: 1.6;
 }
 
 /* ===================== 按钮 ===================== */
 .btn-outline {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--btn-border);
     color: #ccc;
     padding: 6px 14px;
     border-radius: 30px;
@@ -728,7 +773,7 @@ details.firms-settings summary:hover { color: var(--accent); }
     left: 50%;
     transform: translateX(-50%) translateY(-8px);
     z-index: 2000;
-    background: rgba(26, 26, 46, 0.96);
+    background: var(--toast-bg);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(233, 69, 96, 0.4);
@@ -736,7 +781,7 @@ details.firms-settings summary:hover { color: var(--accent); }
     padding: 10px 22px;
     border-radius: 30px;
     font-size: 13px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 30px var(--control-bar-bg);
     opacity: 0;
     pointer-events: none;
     transition: 0.3s;
@@ -766,7 +811,7 @@ details.firms-settings summary:hover { color: var(--accent); }
         margin-top: 0;
         padding-top: 0;
         border-top: none;
-        border-left: 1px solid rgba(255, 255, 255, 0.06);
+        border-left: 1px solid var(--soft-bg);
         padding-left: 8px;
         margin-left: 8px;
     }

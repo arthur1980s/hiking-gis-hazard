@@ -37,11 +37,12 @@
     </script>
 
     <!-- ===== Import Map: 3D 模块依赖映射 (three + addons, 供 js/3d.js 动态 import) ===== -->
+    <!-- Import Map: three/plugin/addons 全部指向本地 vendor(大陆网络不依赖外部 CDN, 线上 3D 可用) -->
     <script type="importmap">
         {
             "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/"
+                "three": "./vendor/three.module.js",
+                "three/addons/": "./vendor/three-addons/"
             }
         }
     </script>
@@ -57,13 +58,14 @@
         <div class="navbar-brand">
             <img class="logo" src="icons/icon.svg" alt="Traveler Guide" />
             <span data-i18n="brand.name">Traveler Guide 你好啊旅行者</span>
-            <span class="badge" id="trailBadge">雨崩·神湖徒步</span>
+            <span class="badge" id="trailBadge" data-i18n="trail.name.yubeng">雨崩·神湖徒步</span>
         </div>
         <div class="navbar-actions">
             <div class="risk-pill" title="综合风险等级" data-i18n-title="risk.title">
                 <span class="risk-dot safe" id="riskDot"></span>
                 <span id="riskLabel" data-i18n="risk.detecting">综合风险: 检测中</span>
             </div>
+            <button class="btn-outline" id="themeBtn" data-i18n-title="theme.btn" title="切换主题(暗色/浅色)" style="font-size:12px; padding:4px 12px;">☀️</button>
             <button class="btn-outline" id="langBtn" data-i18n="lang.btn" style="font-size:12px; padding:4px 12px;" title="中 / EN">EN</button>
             <button class="btn-outline" id="exportBtn" data-i18n="export.btn" style="font-size:12px; padding:4px 14px;">📄 导出报告</button>
         </div>
@@ -101,8 +103,8 @@
 
             <!-- 底部浮层控制按钮组 -->
             <div class="map-overlay-controls">
-                <button class="active" data-basemap="amap" data-i18n-title="map.amap.title" title="高德矢量地图(大陆稳定)">🗺️ <span data-i18n="map.amap">高德</span></button>
-                <button data-basemap="topo" data-i18n-title="map.topo.title" title="OpenTopoMap 地形图">🗺️ <span data-i18n="map.topo">地形</span></button>
+                <button data-basemap="amap" data-i18n-title="map.amap.title" title="高德矢量地图(大陆稳定)">🗺️ <span data-i18n="map.amap">高德</span></button>
+                <button class="active" data-basemap="topo" data-i18n-title="map.topo.title" title="OpenTopoMap 地形图">🗺️ <span data-i18n="map.topo">地形</span></button>
                 <button data-basemap="satellite" data-i18n-title="map.satellite.title" title="Esri 卫星影像">🛰️ <span data-i18n="map.satellite">卫星</span></button>
                 <button data-basemap="osm" data-i18n-title="map.osm.title" title="OpenStreetMap 标准地图(备用)">🗺️ <span data-i18n="map.osm">OSM</span></button>
                 <span class="sep"></span>

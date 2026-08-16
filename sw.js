@@ -6,7 +6,7 @@
  *       保证灾害数据始终是实时抓取。
  * ============================================================ */
 
-const CACHE_NAME = 'trail-sense-v11'; // 版本化注册打破缓存死循环 // 新增高德/OSM 底图源与降级, bump 强制刷新缓存 // 本地 vendor 化 + HTML 网络优先, bump 强制更新
+const CACHE_NAME = 'trail-sense-v12'; // 3D 依赖本地 vendor 化 + 主题切换 + 默认英文/地形, bump 强制更新
 
 /* 应用壳: 首次访问即离线可用所需的全部本地资源 */
 const APP_SHELL = [

@@ -83,11 +83,11 @@
         }
       },
       layers: [
-        // 默认底图为高德矢量(大陆网络稳定, 避免地图黑屏)
-        { id: 'basemap-amap', type: 'raster', source: 'amap', minzoom: 0, maxzoom: 22 },
+        // 默认底图为 OpenTopoMap 地形(等高线信息完整); 高德等作为备用(瓦片失败自动降级链)
+        { id: 'basemap-topo', type: 'raster', source: 'opentopomap', minzoom: 0, maxzoom: 22 },
+        { id: 'basemap-amap', type: 'raster', source: 'amap', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
         { id: 'basemap-amap-sat', type: 'raster', source: 'amap-sat', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
         { id: 'basemap-osm', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
-        { id: 'basemap-topo', type: 'raster', source: 'opentopomap', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
         { id: 'basemap-satellite', type: 'raster', source: 'esri', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } }
       ]
     },
@@ -95,7 +95,7 @@
     zoom: 12,
     pitch: 0,    // 默认 2D 平面视角(降低 GPU 负担); 3D 视角由用户点击「3D」按钮开启
     maxPitch: 85, // 最大俯仰角
-    canvasContextAttributes: { antialias: true }, // 抗锯齿(3D 渲染必需)
+    canvasContextAttributes: { antialias: true, preserveDrawingBuffer: true }, // 抗锯齿 + 保留绘图缓冲(PDF 地图截图可读)
     attributionControl: true
   });
 
@@ -183,7 +183,7 @@
     satellite: 'basemap-satellite',
     osm: 'basemap-osm'
   };
-  let currentBasemap = 'amap'; // 默认高德(大陆网络稳定)
+  let currentBasemap = 'topo'; // 默认地形(OpenTopoMap)
 
   /* 统一底图切换: 更新按钮高亮 + visibility 切换 + 重置瓦片错误计数 */
   function switchBasemap(key) {
@@ -789,6 +789,10 @@
    * ============================================================ */
   function drawElevationChart(points) {
     const ctx = document.getElementById('elevationChart');
+    // 图表配色随主题(浅色: 深色文字/浅网格)
+    const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
+    const chartTick = isLightTheme ? 'rgba(26,26,46,0.45)' : 'rgba(255,255,255,0.3)';
+    const chartGrid = isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
     if (!ctx) return;
     if (state.chart) { state.chart.destroy(); state.chart = null; }
 
@@ -839,14 +843,14 @@
         scales: {
           x: {
             display: true, // 显示横轴(累计距离)
-            title: { display: true, text: '总距离 km', color: 'rgba(255,255,255,0.3)', font: { size: 9 } },
-            grid: { color: 'rgba(255,255,255,0.05)' },
-            ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 }, maxTicksLimit: 6 }
+            title: { display: true, text: '总距离 km', color: chartTick, font: { size: 9 } },
+            grid: { color: chartGrid },
+            ticks: { color: chartTick, font: { size: 9 }, maxTicksLimit: 6 }
           },
           y: {
             display: true,
-            grid: { color: 'rgba(255,255,255,0.05)' },
-            ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 } },
+            grid: { color: chartGrid },
+            ticks: { color: chartTick, font: { size: 9 } },
             beginAtZero: false
           }
         },
@@ -1117,15 +1121,26 @@
       let yL = lm + 8, yR = lm + 8;
 
       // 上部: 地图大图(横贯页宽, 左右小边距)
+      // 修复: 先强制重绘并等待(WebGL preserveDrawingBuffer 保证缓冲可读), 失败不静默丢失
+      let mapImgOk = false;
       try {
+        map.triggerRepaint(); // 强制重绘, 确保最新帧写入缓冲
+        await new Promise((r) => setTimeout(r, 400));
         const mapCanvas = map.getCanvas();
         const mapImg = mapCanvas.toDataURL('image/png');
         const mw = lw - 2 * lm;
         const mh = mw * (mapCanvas.height / mapCanvas.width);
         pdf.addImage(mapImg, 'PNG', lm, lm, mw, mh);
+        mapImgOk = true;
         yL = lm + mh + 6;
         yR = lm + mh + 6;
-      } catch (e) { /* 地图 canvas 被污染则只显示下方文字栏 */ }
+      } catch (e) {
+        // 截图失败(跨域污染/WebGL 异常): 输出降级说明, 不静默丢失
+        console.warn('PDF 地图截图失败, 已降级为文字说明:', e);
+        pdf.setFontSize(10); pdf.setTextColor(160, 160, 160);
+        pdf.text('Map image unavailable (canvas tainted)', lm, lm + 8);
+        yL = lm + 14; yR = lm + 14;
+      }
 
       // ---- 左栏: 路线概况(海拔剖面图 + 轨迹统计) ----
       pdf.setFontSize(11); pdf.setTextColor(30, 30, 30);
@@ -1222,7 +1237,7 @@
         savedAt: Date.now(),
         trailName: state.trailName || '',
         bufferRadius: getBufferRadius(),
-        lang: (function () { try { return localStorage.getItem('lang') || 'zh'; } catch (e) { return 'zh'; } })(),
+        lang: i18n.getLang(), // 记录当前实际语言(供恢复时还原)
         points: state.points,
         alerts: state.hazardsAlerts || [],
         weather: state.weatherData || null,
@@ -1281,8 +1296,8 @@
     if (!('serviceWorker' in navigator)) return;
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
-    // 版本化注册: 新 URL(sw.js?v=11)绕过旧 SW 缓存, 强制更新 SW
-    navigator.serviceWorker.register('sw.js?v=11').then((reg) => {
+    // 版本化注册: 新 URL(sw.js?v=12)绕过旧 SW 缓存, 强制更新 SW
+    navigator.serviceWorker.register('sw.js?v=12').then((reg) => {
       // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
       // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
       reg.addEventListener('updatefound', () => {
@@ -1349,6 +1364,26 @@
     bindUpload();
     bindLayerPopups();
     bindNav();
+
+    // 主题切换: 暗色/浅色, localStorage('theme') 持久化, 默认暗色
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const btn = document.getElementById('themeBtn');
+      if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+      // 重建图表以适配浅色刻度/网格颜色
+      if (state.points) drawElevationChart(state.points);
+    }
+    let savedTheme = 'dark';
+    try { savedTheme = localStorage.getItem('theme') || 'dark'; } catch (e) { /* ignore */ }
+    applyTheme(savedTheme);
+    const themeBtn = document.getElementById('themeBtn');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        try { localStorage.setItem('theme', next); } catch (e) { /* ignore */ }
+        applyTheme(next);
+      });
+    }
 
     // 3D 模式按钮: 动态 import js/3d.js(ES Module, three/plugin 按需加载), 失败优雅降级 2D
     const btn3d = document.getElementById('btn3d');

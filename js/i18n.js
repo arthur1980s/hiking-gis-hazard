@@ -10,8 +10,10 @@ const I18N = {
   /* ---------- 中文 ---------- */
   zh: {
     /* 顶部导航 */
+    'trail.name.yubeng': '雨崩·神湖徒步',
     'brand.name': 'Traveler Guide 你好啊旅行者',
     'lang.btn': 'EN', // 中文界面显示「EN」(切换到英文)
+    'theme.btn': '切换主题(暗色/浅色)',
     'risk.title': '综合风险等级',
     'risk.detecting': '综合风险: 检测中',
     'risk.danger': '综合风险: 高危',
@@ -181,8 +183,10 @@ const I18N = {
 
   /* ---------- 英文 ---------- */
   en: {
+    'trail.name.yubeng': 'Yubeng · Holy Lake Hike',
     'brand.name': 'Traveler Guide',
     'lang.btn': '中', // 英文界面显示「中」(切回中文)
+    'theme.btn': 'Toggle theme (dark/light)',
     'risk.title': 'Overall Risk Level',
     'risk.detecting': 'Risk: Detecting',
     'risk.danger': 'Risk: HIGH',
@@ -345,7 +349,7 @@ const I18N = {
 const i18n = (function () {
   'use strict';
 
-  let lang = 'zh'; // 默认中文
+  let lang = 'en'; // 默认英文(线上默认英文界面)
   const listeners = [];
 
   /* 读取当前语言 */
@@ -403,6 +407,7 @@ const i18n = (function () {
     try {
       const saved = localStorage.getItem('lang');
       if (saved === 'en' || saved === 'zh') lang = saved;
+      else localStorage.setItem('lang', lang); // 无存档: 持久化默认语言, 防止恢复逻辑误判为旧值
     } catch (e) { /* ignore */ }
     applyStatic();
     return lang;

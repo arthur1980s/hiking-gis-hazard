@@ -11,7 +11,7 @@
  * 降级: 模块/DEM 加载失败均不影响 2D 功能(由 app.js catch 处理)
  * ============================================================ */
 import * as THREE from 'three';
-import * as MTP from 'https://cdn.jsdelivr.net/npm/@dvt3d/maplibre-three-plugin@1.7.1/dist/index.js';
+import * as MTP from '../vendor/maplibre-three-plugin.js'; // 本地自托管(相对 js/3d.js 解析到 /vendor/)
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const App = (typeof window !== 'undefined') ? window.TrailSense : null; // app.js 导出的全局
