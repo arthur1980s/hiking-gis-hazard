@@ -52,8 +52,7 @@ export async function toggle3D() {
 }
 
 /* ---------- 开启 3D ---------- */
-async function enable3D() {
-  const map = App.map;
+async function enable3D() {  const map = App.map;
 
   // 1) 3D 视角(俯仰)
   map.setPitch(60);
@@ -100,24 +99,8 @@ async function enable3D() {
 }
 
 /* ---------- 关闭 3D ---------- */
-async function disable3D() {
-  const map = App.map;
-  if (mapScene) {
-    try { mapScene.dispose(); } catch (e) { /* ignore */ }
-    // 移除 Three.js 渲染画布
-    if (renderer && renderer.domElement && renderer.domElement.parentNode) {
-      renderer.domElement.parentNode.removeChild(renderer.domElement);
-    }
-    mapScene = null;
-  }
-  objects.length = 0;
-  hoveredObj = null;
-  // 地形关闭 + 视角回平
-  try { map.setTerrain(null); } catch (e) { /* ignore */ }
-  map.setPitch(0);
-  map.getCanvas().style.cursor = '';
-  enabled = false;
-  updateButton();
+export async function disable3D() {
+  await _disable3D();
   showToast(t('toast.3d.off'));
 }
 
@@ -316,6 +299,32 @@ function resetHighlightOne(m) {
     m.emissive.copy(m.userData._origEmissive);
     delete m.userData._origEmissive;
   }
+}
+
+/* ============================================================
+ * 全局出口: 供 app.js 联动(loadTrail 时若 3D 开启则关闭回 2D)
+ * ============================================================ */
+export function isEnabled() { return enabled; }
+async function _disable3D() {
+  const map = App.map;
+  if (mapScene) {
+    try { mapScene.dispose(); } catch (e) { /* ignore */ }
+    if (renderer && renderer.domElement && renderer.domElement.parentNode) {
+      renderer.domElement.parentNode.removeChild(renderer.domElement);
+    }
+    mapScene = null;
+  }
+  objects.length = 0;
+  hoveredObj = null;
+  try { map.setTerrain(null); } catch (e) { /* ignore */ }
+  map.setPitch(0);
+  map.getCanvas().style.cursor = '';
+  enabled = false;
+  updateButton();
+}
+// 挂到全局, 供普通脚本(loadTrail)在 3D 开启时调用关闭
+if (typeof window !== 'undefined') {
+  window.__trailSense3D = { toggle3D, disable3D, isEnabled: () => enabled };
 }
 
 /* Haversine 米 */

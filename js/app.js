@@ -65,7 +65,7 @@
     },
     center: [98.79, 28.37], // [lng, lat] 默认视野: 云南雨崩(梅里雪山)
     zoom: 12,
-    pitch: 45,   // 初始俯仰角(3D 视角, 2D 平面地图亦可倾斜浏览)
+    pitch: 0,    // 默认 2D 平面视角(降低 GPU 负担); 3D 视角由用户点击「3D」按钮开启
     maxPitch: 85, // 最大俯仰角
     canvasContextAttributes: { antialias: true }, // 抗锯齿(3D 渲染必需)
     attributionControl: true
@@ -297,6 +297,15 @@
 
   async function loadTrail(points, name) {
     state.points = points;
+
+    // 切换轨迹/加载 GPX 时回到 2D 视角: 若 3D 已开启则关闭(按钮状态同步), 否则确保 pitch 0
+    try {
+      if (window.__trailSense3D && window.__trailSense3D.isEnabled()) {
+        await window.__trailSense3D.disable3D();
+      } else {
+        map.setPitch(0);
+      }
+    } catch (e) { /* 3D 模块异常不影响轨迹加载 */ }
     setTrailBadge(name); // 统一更新 badge, 未传 name 时默认"雨崩·神湖徒步"
 
     // 海拔缺失时用 Open-Meteo 高程 API 补齐
@@ -1035,31 +1044,67 @@
       });
       y += 3;
 
-      // ---- 4. 地图截图(MapLibre WebGL canvas 直读; 跨域瓦片污染时自动跳过) ----
+      // ---- 第 2 页: 横向排版(参考 Demo: 上部地图大图 + 下部左右两栏, 最大化利用 A4 横向) ----
+      pdf.addPage('a4', 'l'); // 横向 A4: 297 × 210 mm (jsPDF 签名: addPage(format, orientation))
+      const lw = 297, lh = 210, lm = 10;
+      const colGap = 8;
+      const colW = (lw - 2 * lm - colGap) / 2; // 左右栏宽度
+      const leftX = lm, rightX = lm + colW + colGap;
+      const bottomY = lh - lm; // 页底边界
+      let yL = lm + 8, yR = lm + 8;
+
+      // 上部: 地图大图(横贯页宽, 左右小边距)
       try {
         const mapCanvas = map.getCanvas();
         const mapImg = mapCanvas.toDataURL('image/png');
-        const imgW = pageW - 2 * margin;
-        const imgH = imgW * (mapCanvas.height / mapCanvas.width);
-        ensureSpace(imgH + 8);
-        pdf.addImage(mapImg, 'PNG', margin, y, imgW, imgH);
-        y += imgH + 6;
-      } catch (e) { /* 地图 canvas 被污染则跳过该图 */ }
+        const mw = lw - 2 * lm;
+        const mh = mw * (mapCanvas.height / mapCanvas.width);
+        pdf.addImage(mapImg, 'PNG', lm, lm, mw, mh);
+        yL = lm + mh + 6;
+        yR = lm + mh + 6;
+      } catch (e) { /* 地图 canvas 被污染则只显示下方文字栏 */ }
 
-      // ---- 5. 海拔剖面(chart canvas) ----
+      // ---- 左栏: 路线概况(海拔剖面图 + 轨迹统计) ----
+      pdf.setFontSize(11); pdf.setTextColor(30, 30, 30);
+      pdf.text(enT('trail.card'), leftX, yL); yL += 6;
       try {
         const chartCanvas = document.getElementById('elevationChart');
         if (chartCanvas && state.chart) {
           const img = chartCanvas.toDataURL('image/png');
-          const imgW = pageW - 2 * margin;
-          const imgH = imgW * (chartCanvas.height / chartCanvas.width);
-          ensureSpace(imgH + 8);
-          pdf.addImage(img, 'PNG', margin, y, imgW, imgH);
-          y += imgH + 6;
+          const ih = colW * (chartCanvas.height / chartCanvas.width);
+          if (yL + ih < bottomY) { pdf.addImage(img, 'PNG', leftX, yL, colW, ih); yL += ih + 4; }
         }
       } catch (e) { /* 剖面截图失败则跳过 */ }
+      pdf.setFontSize(8); pdf.setTextColor(70, 70, 70);
+      statPairs.forEach(([k, id]) => {
+        if (yL + 4 > bottomY) return;
+        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), leftX, yL);
+        yL += 4;
+      });
 
-      // ---- 6. 侧栏 html2canvas 截图(长图分片插入, 自动分页) ----
+      // ---- 右栏: 预警列表 + 微气象摘要 ----
+      pdf.setFontSize(11); pdf.setTextColor(30, 30, 30);
+      pdf.text(enT('report.alerts'), rightX, yR); yR += 6;
+      pdf.setFontSize(8); pdf.setTextColor(90, 90, 90);
+      alertTexts.forEach((txt) => {
+        const wrapped = pdf.splitTextToSize(txt, colW - 4);
+        if (yR + wrapped.length * 3.2 > bottomY) return;
+        pdf.text(wrapped, rightX, yR);
+        yR += wrapped.length * 3.2 + 1.5;
+      });
+      yR += 3;
+      pdf.setFontSize(11); pdf.setTextColor(30, 30, 30);
+      pdf.text(enT('report.weather'), rightX, yR); yR += 6;
+      pdf.setFontSize(8); pdf.setTextColor(70, 70, 70);
+      wxPairs.forEach(([k, id]) => {
+        if (yR + 4 > bottomY) return;
+        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), rightX, yR);
+        yR += 4;
+      });
+
+      // ---- 第 3 页起: 侧栏 html2canvas 截图(纵向页, 长图分片插入, 自动分页) ----
+      pdf.addPage('a4', 'p'); // 回到纵向
+      y = margin;
       try {
         if (typeof html2canvas === 'undefined') throw new Error('html2canvas 未加载');
         const panelCanvas = await html2canvas(document.getElementById('sidePanel'), {
