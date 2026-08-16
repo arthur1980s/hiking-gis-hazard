@@ -49,7 +49,7 @@
         <div class="navbar-brand">
             <img class="logo" src="icons/icon.svg" alt="TrailSense" />
             <span>TrailSense 徒步风险哨兵</span>
-            <span class="badge">武功山实例</span>
+            <span class="badge" id="trailBadge">武功山反穿</span>
         </div>
         <div class="navbar-actions">
             <div class="risk-pill" title="综合风险等级">
@@ -110,29 +110,8 @@
         <!-- 右: 侧栏 (移动端转底部) -->
         <aside class="side-panel" id="sidePanel">
 
-            <!-- ===== Hike 视图: 态势感知(上传/概况/预警/微气象) ===== -->
+            <!-- ===== Hike 视图: 态势感知(概况/预警/微气象) ===== -->
             <div class="view-panel active" data-view="hike">
-
-            <!-- 卡片 1: 上传轨迹 -->
-            <div class="card">
-                <div class="card-title"><span>📤</span> 上传轨迹 (GPX / KML / GeoJSON)</div>
-                <div class="upload-zone" id="uploadZone">
-                    <span class="big-icon">📂</span>
-                    <p>拖拽或点击选择文件</p>
-                    <span class="hint">支持 .gpx .kml .geojson · 最大 10MB</span>
-                    <input type="file" id="fileInput" accept=".gpx,.kml,.geojson,.json" style="display:none;" />
-                </div>
-                <div class="upload-actions">
-                    <button class="btn-outline" onclick="window.TrailSense && window.TrailSense.loadWugongshan()" style="font-size:12px;">🏔️ 武功山反穿（内置）</button>
-                    <button class="btn-outline" onclick="location.reload()" style="font-size:12px;">🗑️ 清除</button>
-                    <select class="buffer-select" id="bufferRadius" title="监测缓冲区半径">
-                        <option value="5">5km</option>
-                        <option value="10" selected>10km</option>
-                        <option value="20">20km</option>
-                        <option value="30">30km</option>
-                    </select>
-                </div>
-            </div>
 
             <!-- 卡片 2: 路线概况 + 海拔剖面 -->
             <div class="card">
@@ -201,8 +180,30 @@
 
             </div><!-- /view-panel hike -->
 
-            <!-- ===== Discover 视图: 探索推荐路线 ===== -->
+            <!-- ===== Discover 视图: 上传轨迹 + 探索推荐路线 ===== -->
             <div class="view-panel" data-view="discover">
+
+                <!-- 上传轨迹 (从 Hike 视图迁移至此, 置于最前) -->
+                <div class="card">
+                    <div class="card-title"><span>📤</span> 上传轨迹 (GPX / KML / GeoJSON)</div>
+                    <div class="upload-zone" id="uploadZone">
+                        <span class="big-icon">📂</span>
+                        <p>拖拽或点击选择文件</p>
+                        <span class="hint">支持 .gpx .kml .geojson · 最大 10MB</span>
+                        <input type="file" id="fileInput" accept=".gpx,.kml,.geojson,.json" style="display:none;" />
+                    </div>
+                    <div class="upload-actions">
+                        <button class="btn-outline" onclick="window.TrailSense && window.TrailSense.loadWugongshan()" style="font-size:12px;">🏔️ 武功山反穿（内置）</button>
+                        <button class="btn-outline" onclick="location.reload()" style="font-size:12px;">🗑️ 清除</button>
+                        <select class="buffer-select" id="bufferRadius" title="监测缓冲区半径">
+                            <option value="5">5km</option>
+                            <option value="10" selected>10km</option>
+                            <option value="20">20km</option>
+                            <option value="30">30km</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-title"><span>🧭</span> 探索 · 世界知名徒步路线</div>
                     <p class="discover-intro">
@@ -248,7 +249,7 @@
                     <div class="card-title"><span>💡</span> 使用提示</div>
                     <p class="discover-tip">
                         · 示例轨迹为简化模拟数据(正弦海拔), 用于演示完整检测流程<br />
-                        · 也可在 Hike 视图上传自己的 GPX / KML / GeoJSON 轨迹<br />
+                        · 在上方上传自己的 GPX / KML / GeoJSON 轨迹, 加载后自动回到 Hike 视图<br />
                         · 点击地图上的 🟢 起点 / 🔴 终点 / ⛰️ 景点可查看详情
                     </p>
                 </div>

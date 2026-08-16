@@ -35,12 +35,14 @@ body {
     overflow: hidden;
 }
 
+/* #app 占满整个浏览器窗口(全屏显示, 地图区域最大化) */
 #app {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    max-width: 1600px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
 }
 
 /* ===================== 顶部导航栏 ===================== */

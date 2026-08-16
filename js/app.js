@@ -14,6 +14,7 @@
    * ============================================================ */
   const state = {
     points: null,           // 轨迹点数组 [[lat,lng,ele],...]
+    trailName: '武功山反穿', // 当前轨迹名称(顶部 badge 显示)
     trailGeoJSON: null,     // 轨迹 FeatureCollection
     lineCoords: null,       // [[lng,lat,ele?],...]
     bufferGeoJSON: null,    // 缓冲区 Feature
@@ -247,11 +248,19 @@
    * ============================================================ */
   function loadWugongshan() {
     const pts = TrailGeo.generateWugongshanTrail();
-    loadTrail(pts);
+    loadTrail(pts, '武功山反穿');
   }
 
-  async function loadTrail(points) {
+  /* 更新顶部导航栏 badge: 跟随当前加载的轨迹名(示例/Discover 路线/上传文件) */
+  function setTrailBadge(name) {
+    state.trailName = name || '武功山反穿';
+    const el = document.getElementById('trailBadge');
+    if (el) el.textContent = state.trailName;
+  }
+
+  async function loadTrail(points, name) {
     state.points = points;
+    setTrailBadge(name); // 统一更新 badge, 未传 name 时默认"武功山反穿"
 
     // 海拔缺失时用 Open-Meteo 高程 API 补齐
     let hasElevation = points.some((p) => p[2] != null && !isNaN(p[2]));
@@ -751,8 +760,11 @@
     try {
       const { points, hasElevation } = await TrailGeo.parseFile(file);
       if (!hasElevation) await Weather.fillElevation(points); // 无海拔 → 高程 API 补齐
+      // badge 显示上传文件名(去扩展名), 如 my-trail.gpx → my-trail
+      const trailName = (file.name || '上传轨迹').replace(/\.[^.]+$/, '');
       showToast('📂 已加载轨迹: ' + file.name + ' (' + points.length + ' 点)');
-      loadTrail(points);
+      loadTrail(points, trailName);
+      switchView('hike'); // 上传完成后自动切回 Hike 视图(路线概况/预警/微气象在此)
     } catch (err) {
       showToast('❌ 解析失败: ' + err.message);
     }
@@ -900,7 +912,7 @@
         const trail = DISCOVER_TRAILS[btn.dataset.trail];
         if (!trail) return;
         const pts = trail.points();
-        loadTrail(pts);
+        loadTrail(pts, trail.name); // badge 同步为路线名
         switchView('hike');
         showToast('🧭 已加载「' + trail.name + '」, 正在检测周边灾害...');
       });
@@ -939,5 +951,5 @@
   }
 
   /* 暴露给控制台调试 */
-  window.TrailSense = { state, map, loadTrail, loadWugongshan, updateRiskPanel, calcWindChill, exportReport, switchView, DISCOVER_TRAILS };
+  window.TrailSense = { state, map, loadTrail, loadWugongshan, updateRiskPanel, calcWindChill, exportReport, switchView, DISCOVER_TRAILS, setTrailBadge };
 })();
