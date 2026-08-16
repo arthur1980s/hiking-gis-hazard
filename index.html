@@ -11,7 +11,7 @@
     <title>🏔️ Traveler Guide · 你好啊旅行者</title>
 
     <!-- ===== PWA ===== -->
-    <link rel="manifest" href="manifest.json?v=15" />
+    <link rel="manifest" href="manifest.json?v=17" />
     <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
     <link rel="apple-touch-icon" href="icons/icon.svg" />
 
@@ -22,17 +22,14 @@
     <script src="vendor/turf.min.js"></script>
     <script src="vendor/chart.umd.min.js"></script>
 
-    <!-- ===== html2canvas / jsPDF (本地 vendor, defer 非关键: 仅报告导出时使用) ===== -->
-    <script defer src="vendor/html2canvas.min.js"></script>
-    <script defer src="vendor/jspdf.umd.min.js"></script>
+    <!-- ===== html2canvas / jsPDF (本地 vendor; 导出报告时按需动态加载, 见 exportReport) ===== -->
+    <!-- 注意: 不用 defer+document.write — defer 未执行完时内联检查会误判未加载走 CDN 备用(被 CSP 拦), 改为 exportReport 内动态加载 vendor 本地文件 -->
 
     <!-- ===== CDN 备用源: 本地 vendor 加载失败时切换 CDN(双保险) ===== -->
     <script>
         if (typeof maplibregl === 'undefined') document.write('<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"><\/script>');
         if (typeof turf === 'undefined') document.write('<script src="https://unpkg.com/@turf/turf@6/turf.min.js" integrity="sha384-82q0nm29xZzIo5BMtDYnh2/NxeO6FoaK1S/0nF84w3cEsqbBfun3JdMyDVYWfVY5" crossorigin="anonymous"><\/script>');
         if (typeof Chart === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha384-DhxhYObIMeMNGyAG7iK11OHzBIKyEIeRL0ad1iFPAOwZB8iirUlTT0O/WJJUk8+o" crossorigin="anonymous"><\/script>');
-        if (typeof html2canvas === 'undefined') document.write('<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"><\/script>');
-        if (typeof jspdf === 'undefined') document.write('<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"><\/script>');
         if (!document.querySelector('link[href*="maplibre-gl.css"]')) document.write('<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous" />');
     </script>
 
@@ -48,7 +45,7 @@
     </script>
 
     <!-- ===== 本地样式 ===== -->
-    <link rel="stylesheet" href="css/style.css?v=15" />
+    <link rel="stylesheet" href="css/style.css?v=17" />
 </head>
 <body>
 
@@ -243,10 +240,10 @@
 <div id="toast"></div>
 
 <!-- ===== 本地 JS: 依赖顺序 i18n → geo → hazards → weather → app ===== -->
-<script src="js/i18n.js?v=15"></script>
-<script src="js/geo.js?v=15"></script>
-<script src="js/hazards.js?v=15"></script>
-<script src="js/weather.js?v=15"></script>
-<script src="js/app.js?v=15"></script>
+<script src="js/i18n.js?v=17"></script>
+<script src="js/geo.js?v=17"></script>
+<script src="js/hazards.js?v=17"></script>
+<script src="js/weather.js?v=17"></script>
+<script src="js/app.js?v=17"></script>
 </body>
 </html>

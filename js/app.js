@@ -1021,13 +1021,36 @@
    * 11. 报告导出 (jsPDF A4 多页 PDF: 统计/预警/微气象文本 + 地图/剖面/侧栏截图)
    *     地图用 MapLibre getCanvas() 直读; 侧栏用 html2canvas; 失败逐级降级打印
    * ============================================================ */
+
+  /* 按需加载报告库(html2canvas/jsPDF): 动态插入 vendor 本地 script。
+   * 不能用 defer+document.write — defer 未执行完时内联检查会误判未加载,
+   * 走 CDN 备用源被 CSP 拦截导致库缺失。改为导出时动态加载, 保证可用。 */
+  function ensureReportLibs() {
+    const libs = [
+      { global: 'html2canvas', src: 'vendor/html2canvas.min.js' },
+      { global: 'jspdf', src: 'vendor/jspdf.umd.min.js' }
+    ];
+    return Promise.all(libs.map((lib) => {
+      if (typeof window[lib.global] !== 'undefined') return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = lib.src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('加载失败: ' + lib.src));
+        document.head.appendChild(s);
+      });
+    }));
+  }
+
   async function exportReport() {
     const btn = document.getElementById('exportBtn');
     if (!btn) return;
     btn.disabled = true;
     btn.textContent = t('toast.exporting');
     try {
-      // jsPDF 未加载 → 降级打印
+      // 按需加载本地 vendor 库(html2canvas/jsPDF) — 不依赖 defer+document.write(时序会误判未加载走 CDN 被 CSP 拦)
+      await ensureReportLibs();
+      // jsPDF 仍未加载 → 降级打印
       if (typeof jspdf === 'undefined') throw new Error('jsPDF 未加载');
       const { jsPDF } = jspdf;
       const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -1128,6 +1151,9 @@
       //   底图切到高德(带 CORS), 等地图 idle(瓦片渲染完成)后再截, 最后恢复。
       let mapImgOk = false;
       const prevBasemap = currentBasemap;
+      // 注意: tempBasemap 必须与 prevBasemap 同级声明(在 try 外),
+      // 否则 finally 块引用会抛 ReferenceError → 整个导出降级打印(曾导致 PDF 无地图)
+      const tempBasemap = (prevBasemap === 'topo') ? 'amap' : prevBasemap;
       const prevLayerVis = {};
       const NO_CORS_LAYERS = ['contour', 'gibs-fires', 'rain-layer']; // 无 CORS 头图层
       try {
@@ -1139,14 +1165,17 @@
           }
         });
         // 2) 底图临时切到高德(有 CORS; 地形 OpenTopoMap 无 CORS)
-        const tempBasemap = (prevBasemap === 'topo') ? 'amap' : prevBasemap;
         if (tempBasemap !== prevBasemap) switchBasemap(tempBasemap);
-        // 3) 等地图完全渲染(瓦片加载完成)再截图
+        // 3) 等地图瓦片真正渲染完成(areTilesLoaded 轮询, 比 idle 事件更可靠; 8s 兜底)
         await new Promise((resolve) => {
-          let done = false;
-          const finish = () => { if (!done) { done = true; resolve(); } };
-          map.once('idle', finish);          // 瓦片/图层渲染完成
-          setTimeout(finish, 3000);          // 兜底超时(网络慢也不阻塞导出)
+          const start = Date.now();
+          const checkTiles = () => {
+            try {
+              if (map.areTilesLoaded() || Date.now() - start > 8000) resolve();
+              else setTimeout(checkTiles, 250);
+            } catch (e) { resolve(); }
+          };
+          setTimeout(checkTiles, 100); // 等切换生效后再轮询
         });
         const mapCanvas = map.getCanvas();
         const mapImg = mapCanvas.toDataURL('image/png');
@@ -1326,8 +1355,8 @@
     if (!('serviceWorker' in navigator)) return;
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
-    // 版本化注册: 新 URL(sw.js?v=15)绕过旧 SW 缓存, 强制更新 SW
-    navigator.serviceWorker.register('sw.js?v=15').then((reg) => {
+    // 版本化注册: 新 URL(sw.js?v=17)绕过旧 SW 缓存, 强制更新 SW
+    navigator.serviceWorker.register('sw.js?v=17').then((reg) => {
       // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
       // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
       reg.addEventListener('updatefound', () => {
