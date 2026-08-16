@@ -40,6 +40,10 @@
     --label-bg: rgba(10, 10, 15, 0.88);
     --control-bar-bg: rgba(0, 0, 0, 0.6);
     --map-bg: #0d0d1a;
+    --text-strong: #ffffff;  /* 强文字(浅色主题下变深色, 修复白底白字对比度) */
+    --text-btn: #cccccc;     /* 按钮/控件文字 */
+    --text-ctrl: #dddddd;    /* 控件文字 */
+    --on-accent: #ffffff;    /* accent 背景上的文字(红底恒用白字) */
 }
 
 /* ===================== 浅色主题覆盖 ===================== */
@@ -67,6 +71,10 @@
     --label-bg: rgba(255, 255, 255, 0.92);
     --control-bar-bg: rgba(255, 255, 255, 0.75);
     --map-bg: #dfe3ea;
+    --text-strong: #1a1a2e; /* 浅色主题下强文字用深色 */
+    --text-btn: #333333;
+    --text-ctrl: #333333;
+    --on-accent: #ffffff;
 }
 
 html, body {
@@ -123,7 +131,7 @@ body {
 .navbar-brand .badge {
     font-size: 10px;
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     padding: 2px 10px;
     border-radius: 20px;
     font-weight: 500;
@@ -185,12 +193,34 @@ body {
     background: var(--map-bg);
 }
 
-/* Leaflet 控件暗黑化 */
+/* Leaflet 控件暗黑化(遗留, 页面已用 MapLibre; 保留以防回退) */
 .leaflet-control-zoom a {
     background: rgba(20, 20, 40, 0.85) !important;
-    color: #ddd !important;
+    color: var(--text-ctrl) !important;
     border-color: var(--border-3) !important;
 }
+
+/* MapLibre 控件(zoom/attribution)随主题 */
+.maplibregl-ctrl-group {
+    background: rgba(20, 20, 40, 0.85) !important;
+    border-color: var(--border-3) !important;
+}
+.maplibregl-ctrl-group button {
+    background: transparent !important;
+    border-color: var(--border-3) !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1);
+}
+.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
+    filter: invert(1);
+}
+.maplibregl-ctrl-attrib {
+    background: var(--label-bg) !important;
+    color: var(--text-dim) !important;
+}
+.maplibregl-ctrl-attrib a { color: var(--text-2) !important; }
 
 .leaflet-control-attribution {
     background: var(--label-bg) !important;
@@ -239,7 +269,7 @@ body {
 .map-overlay-controls button {
     background: var(--btn-bg);
     border: none;
-    color: #ccc;
+    color: var(--text-btn);
     padding: 6px 13px;
     border-radius: 30px;
     font-size: 12px;
@@ -251,12 +281,12 @@ body {
 
 .map-overlay-controls button:hover {
     background: rgba(233, 69, 96, 0.3);
-    color: #fff;
+    color: var(--text-strong);
 }
 
 .map-overlay-controls button.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     box-shadow: 0 0 12px rgba(233, 69, 96, 0.5);
 }
 
@@ -313,7 +343,7 @@ body {
     transform: translate(-50%, -140%); /* 显示在红点上方 */
     background: var(--label-bg);
     border: 1px solid rgba(233, 69, 96, 0.45);
-    color: #fff;
+    color: var(--text-strong);
     font-size: 11px;
     line-height: 1.4;
     padding: 4px 10px;
@@ -457,7 +487,7 @@ body {
 .route-name {
     font-size: 14px;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-strong);
 }
 
 .route-sub {
@@ -532,7 +562,7 @@ body {
     margin-left: auto;
     background: var(--soft-bg);
     border: 1px solid var(--border-3);
-    color: #ccc;
+    color: var(--text-btn);
     border-radius: 30px;
     padding: 5px 10px;
     font-size: 11px;
@@ -561,7 +591,7 @@ body {
 .trail-stat-item .num {
     font-size: 16px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-strong);
     white-space: nowrap;
 }
 
@@ -661,7 +691,7 @@ details.firms-settings summary:hover { color: var(--accent); }
     border: 1px solid var(--border-3);
     border-radius: 10px;
     padding: 7px 10px;
-    color: #fff;
+    color: var(--text-strong);
     font-size: 12px;
     font-family: inherit;
 }
@@ -690,7 +720,7 @@ details.firms-settings summary:hover { color: var(--accent); }
     border-radius: 9px;
 }
 
-.wx-item .num { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; }
+.wx-item .num { font-size: 13px; font-weight: 700; color: var(--text-strong); white-space: nowrap; }
 .wx-item .label { font-size: 9.5px; color: var(--text-dim); margin-top: 1px; }
 
 .windchill-calc {
@@ -707,7 +737,7 @@ details.firms-settings summary:hover { color: var(--accent); }
     border: 1px solid var(--border-2);
     border-radius: 10px;
     padding: 8px 10px;
-    color: #fff;
+    color: var(--text-strong);
     font-size: 14px;
     font-family: inherit;
 }
@@ -739,7 +769,7 @@ details.firms-settings summary:hover { color: var(--accent); }
 .btn-outline {
     background: transparent;
     border: 1px solid var(--btn-border);
-    color: #ccc;
+    color: var(--text-btn);
     padding: 6px 14px;
     border-radius: 30px;
     font-size: 12px;
@@ -748,12 +778,12 @@ details.firms-settings summary:hover { color: var(--accent); }
     transition: 0.2s;
 }
 
-.btn-outline:hover { border-color: var(--accent); color: #fff; }
+.btn-outline:hover { border-color: var(--accent); color: var(--text-strong); }
 
 .btn-primary {
     background: var(--accent);
     border: none;
-    color: #fff;
+    color: var(--on-accent);
     padding: 8px 20px;
     border-radius: 30px;
     font-weight: 600;
@@ -777,7 +807,7 @@ details.firms-settings summary:hover { color: var(--accent); }
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(233, 69, 96, 0.4);
-    color: #fff;
+    color: var(--text-strong);
     padding: 10px 22px;
     border-radius: 30px;
     font-size: 13px;
@@ -834,19 +864,69 @@ details.firms-settings summary:hover { color: var(--accent); }
 }
 
 @media (max-width: 480px) {
-    .navbar { padding: 8px 12px; }
-    .navbar-brand { font-size: 14px; }
-    .risk-pill { font-size: 11px; padding: 4px 12px; }
-    .app-nav { height: 48px; }
-    .nav-item { height: 40px; padding: 0 10px; gap: 4px; }
-    .nav-item svg { width: 20px; height: 20px; }
-    .nav-item span { font-size: 10px; }
-    .side-panel { padding: 12px 10px; max-height: 48vh; }
-    .map-overlay-controls { bottom: 8px; padding: 6px 10px; gap: 5px; border-radius: 24px; }
-    .map-overlay-controls button { font-size: 10px; padding: 4px 9px; }
+    .navbar { padding: 8px 10px; gap: 6px; flex-wrap: nowrap; }
+    .navbar-brand { font-size: 13px; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .navbar-brand .logo { width: 24px; height: 24px; flex-shrink: 0; }
+    .navbar-actions { gap: 6px; flex-shrink: 0; }
+    .risk-pill { font-size: 10px; padding: 4px 10px; }
+    .risk-pill #riskLabel { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 触控目标: 按钮最小 44px 高(移动端可点性) */
+    .btn-outline, .btn-primary, #langBtn, #themeBtn, #exportBtn { min-height: 40px; }
+    .app-nav { height: 52px; }
+    .nav-item { height: 44px; padding: 0 12px; gap: 5px; }
+    .nav-item svg { width: 22px; height: 22px; }
+    .nav-item span { font-size: 11px; }
+    .side-panel { padding: 10px 8px; max-height: 50vh; }
+    .side-panel .card { padding: 12px; }
+    .card-title { font-size: 11px; }
+    .map-overlay-controls { bottom: 6px; left: 4%; right: 4%; transform: none; padding: 6px 8px; gap: 5px; border-radius: 18px; max-width: none; }
+    .map-overlay-controls button { font-size: 11px; padding: 8px 10px; min-height: 38px; }
     .map-overlay-controls .sep { display: none; }
-    .wx-grid { grid-template-columns: repeat(4, 1fr); }
-    .trail-stats { grid-template-columns: repeat(3, 1fr); }
+    .wx-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .wx-item { padding: 6px 1px; }
+    .wx-item .num { font-size: 12px; }
+    .wx-item .label { font-size: 9px; }
+    .trail-stats { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .trail-stat-item { padding: 6px 1px; }
+    .trail-stat-item .num { font-size: 14px; }
+    .trail-stat-item .label { font-size: 9px; }
+    .chart-container { height: 90px; }
+    .alert-list { max-height: 140px; }
+    .upload-zone { padding: 14px 8px; }
+    .upload-actions { gap: 6px; }
+    .upload-actions .btn-outline { font-size: 11px; }
+    .buffer-select { padding: 6px 8px; font-size: 11px; margin-left: 0; }
+    .windchill-calc input { font-size: 13px; padding: 8px 8px; }
+    .windchill-result { font-size: 17px; padding: 6px 10px; min-width: 60px; }
+    .map-statusbar { font-size: 10px; padding: 4px 8px; }
+    .navbar-actions #exportBtn { padding: 4px 10px; font-size: 11px; }
+    /* 防止横屏溢出 */
+    body { overflow: hidden; }
+}
+
+/* 浅色主题下 Leaflet 控件(zoom/popup)改为浅底深字, 否则深底+深字对比度差 */
+[data-theme="light"] .leaflet-control-zoom a {
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #333 !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+}
+[data-theme="light"] .leaflet-control-zoom a:hover {
+    background: #eef0f5 !important;
+}
+[data-theme="light"] .maplibregl-ctrl-group {
+    background: rgba(255, 255, 255, 0.92) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+}
+[data-theme="light"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon,
+[data-theme="light"] .maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+[data-theme="light"] .maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
+    filter: none;
+}
+[data-theme="light"] .leaflet-popup-content-wrapper,
+[data-theme="light"] .leaflet-popup-tip {
+    background: #ffffff;
+    color: #1a1a2e;
+    border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 /* ===================== 打印(导出报告兜底) ===================== */
@@ -861,7 +941,7 @@ details.firms-settings summary:hover { color: var(--accent); }
         background: #fff !important;
         color: #000 !important;
     }
-    .card { border-color: #ddd; background: #fafafa; color: #000; }
+    .card { border-color: var(--text-ctrl); background: #fafafa; color: #000; }
     .card-title, .trail-stat-item .label, .alert-item .time { color: #666; }
     .trail-stat-item .num, .wx-item .num { color: #000; }
 }

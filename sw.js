@@ -6,7 +6,7 @@
  *       保证灾害数据始终是实时抓取。
  * ============================================================ */
 
-const CACHE_NAME = 'trail-sense-v17'; // tempBasemap 作用域修复 + 按需加载报告库 + HSTS // 报告库按需加载 + areTilesLoaded 等待 + HSTS // PDF 地图截图: 隐藏无CORS图层+等idle // CSP data:/s3 + PDF 地图 CORS 切换 // 跨域放行 + 3D 本地导入 + 主题/英文/地形, bump 强制更新 // 3D 依赖本地 vendor 化 + 主题切换 + 默认英文/地形, bump 强制更新
+const CACHE_NAME = 'trail-sense-v19'; // 浅色对比度/移动端/去持久化/PDF重排, bump 强制更新 // tempBasemap 作用域修复 + 按需加载报告库 + HSTS // 报告库按需加载 + areTilesLoaded 等待 + HSTS // PDF 地图截图: 隐藏无CORS图层+等idle // CSP data:/s3 + PDF 地图 CORS 切换 // 跨域放行 + 3D 本地导入 + 主题/英文/地形, bump 强制更新 // 3D 依赖本地 vendor 化 + 主题切换 + 默认英文/地形, bump 强制更新
 
 /* 应用壳: 首次访问即离线可用所需的全部本地资源 */
 const APP_SHELL = [
