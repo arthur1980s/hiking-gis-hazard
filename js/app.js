@@ -810,7 +810,20 @@
     if (!('serviceWorker' in navigator)) return;
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
-    navigator.serviceWorker.register('sw.js').catch(() => { /* 注册失败不影响使用 */ });
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
+      // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+            showToast('🔄 检测到新版本, 正在刷新...');
+            setTimeout(() => location.reload(), 600);
+          }
+        });
+      });
+    }).catch(() => { /* 注册失败不影响使用 */ });
   }
 
   /* ============================================================

@@ -6,7 +6,7 @@
  *       保证灾害数据始终是实时抓取。
  * ============================================================ */
 
-const CACHE_NAME = 'trail-sense-v2';
+const CACHE_NAME = 'trail-sense-v3';
 
 /* 应用壳: 首次访问即离线可用所需的全部本地资源 */
 const APP_SHELL = [
