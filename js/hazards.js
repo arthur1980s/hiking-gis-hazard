@@ -2,13 +2,12 @@
  * hazards.js — 灾害碰撞检测引擎 (Hazard Intersection Engine)
  * 真实数据源:
  *   · 地震: USGS Earthquake API (过去 48 小时, 震级≥2.5, 半径 200km)
- *   · 山火: NASA FIRMS (需 API Key, 国内网络通常不可达)
- *           + NASA GIBS 卫星热异常瓦片 (无需 Key, 尽力而为)
+ *   · 山火: NASA FIRMS (需 API Key; 2026-08 起 NASA 移除 GIBS 栅格瓦片,
+ *           FIRMS 点数据为唯一数据源)
  * 所有网络请求带 8s 超时 (AbortController), 失败自动优雅降级,
  * 绝不让页面卡死; 降级时返回 status 标记, 由 UI 显示提示。
  * 依赖: TrailGeo (geo.js)
- * 注意: GIBS 瓦片在此只返回 URL 模板字符串(不依赖具体地图引擎),
- *       由 app.js 负责用 MapLibre 创建 raster source/layer。
+ * 注意: 所有 fetch 均带超时, 失败降级为文字提示, 不影响页面。
  * ============================================================ */
 
 /* NASA FIRMS API Key (后台固化, 无需用户配置; 申请地址: https://firms.modaps.eosdis.nasa.gov/api/map_key/) */
@@ -20,9 +19,9 @@ const Hazards = (function () {
   const TIMEOUT_MS = 8000; // 统一 8 秒超时
 
   /* ---------- 带超时的 fetch: 超时/网络错误统一抛出 ---------- */
-  async function fetchTimeout(url, options) {
+  async function fetchTimeout(url, options, timeoutMs) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs || TIMEOUT_MS);
     try {
       const res = await fetch(url, Object.assign({ signal: ctrl.signal }, options));
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -75,28 +74,13 @@ const Hazards = (function () {
   }
 
   /* ============================================================
-   * 2. 山火:
-   *    a) NASA GIBS 卫星热异常瓦片 URL (无需 Key, 国内网络可能不可达,
-   *       瓦片加载失败时该图层自动不显示, 不影响页面)
-   *    b) NASA FIRMS 点数据 (需 API Key, 网络通常不通 → 自动跳过)
+   * 2. 山火: NASA FIRMS 点数据 (需 API Key)
+   *    ⚠️ 2026-08-16: NASA 已移除 GIBS 旧 PNG 栅格图层
+   *    VIIRS_SNPP_Thermal_Anomalies_375m_Tiles(全部 400);
+   *    新 MVT 矢量图层为 epsg4326/500m 网格, 与 WebMercator 坐标系
+   *    不匹配(瓦片行列语义不同), 无法直接用于 MapLibre raster source,
+   *    故山火数据统一走 FIRMS 点数据。
    * ============================================================ */
-
-  /* GIBS 热异常瓦片 URL 模板: 375m VIIRS 夜间/昼间火点
-   * 返回纯 URL 字符串(含 {z}/{y}/{x} 占位符), 由 app.js 建 MapLibre raster source。
-   * 注意: MapLibre 的 {x} 表示瓦片列、{y} 表示瓦片行, 该模板顺序即 WMTS 的
-   *       TileRow/TileCol, 语义正确, 与引擎无关。 */
-  function gibsFireTileUrl() {
-    try {
-      // FIRMS 产品通常滞后约 1~2 天, 取昨天日期
-      const d = new Date(Date.now() - 24 * 3600 * 1000);
-      const dateStr = d.toISOString().slice(0, 10);
-      return 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/'
-        + 'VIIRS_SNPP_Thermal_Anomalies_375m_Tiles/default/'
-        + dateStr + '/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png';
-    } catch (e) {
-      return null;
-    }
-  }
 
   /* FIRMS area API (CSV): 需 API Key; 失败静默返回空数组 */
   async function fetchFirmsPoints(lat, lon) {
@@ -107,7 +91,7 @@ const Hazards = (function () {
     const url = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv/'
       + key + '/VIIRS_SNPP_NRT/' + bbox + '/2'; // 最近 2 天
     try {
-      const res = await fetchTimeout(url);
+      const res = await fetchTimeout(url, null, 12000); // FIRMS 大陆网络慢, 放宽到 12s
       const text = await res.text();
       const rows = text.split(/\r?\n/).filter((r) => r.trim());
       if (rows.length < 2 || rows[0].toLowerCase().includes('error')) return [];
@@ -128,23 +112,23 @@ const Hazards = (function () {
       }
       return pts;
     } catch (e) {
-      return []; // FIRMS 不可达 → 降级(仅保留 GIBS 瓦片)
+      return []; // FIRMS 不可达 → 空点(山火图层不显示, 状态提示不可达)
     }
   }
 
-  /* 山火总入口: 返回 GIBS 瓦片 URL + FIRMS 点 + 状态说明 */
+  /* 山火总入口: 返回 FIRMS 点 + 状态说明 */
   async function fetchWildfires(lat, lon) {
-    const tileUrl = gibsFireTileUrl();              // 无需 Key 的瓦片 URL
-    const points = await fetchFirmsPoints(lat, lon); // 需 Key 的点数据
+    // FIRMS 大陆网络实测约 6.5s(限速), 超时放宽到 12s 避免误判不可达
+    const points = await fetchFirmsPoints(lat, lon);
     const note = points.length
       ? 'NASA FIRMS 卫星热点 ' + points.length + ' 处'
       : (getFirmsKey()
-          ? 'NASA FIRMS 数据源不可达(超时/网络受限), 已降级: 山火仅显示 GIBS 卫星热异常瓦片(若未显示说明数据源不通)'
-          : '未配置 NASA FIRMS API Key, 山火点数据不可用; 已叠加 GIBS 卫星热异常瓦片(无需 Key, 尽力而为)');
+          ? 'NASA FIRMS 数据源不可达(超时/网络受限), 山火风险未知, 请出发前另行核查'
+          : '未配置 NASA FIRMS API Key, 山火点数据不可用');
     // i18nKey: 供 app.js 渲染时按当前语言取词(message 为中文兜底)
     const i18nKey = points.length ? 'ok.firms.points' : (getFirmsKey() ? 'err.firms.unreachable' : 'err.firms.nokey');
     const i18nParams = points.length ? { n: points.length } : undefined;
-    return { tileUrl, points, status: points.length ? 'ok' : 'degraded', message: note, i18nKey, i18nParams };
+    return { points, status: points.length ? 'ok' : 'degraded', message: note, i18nKey, i18nParams };
   }
 
   /* ============================================================

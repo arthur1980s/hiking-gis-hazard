@@ -23,7 +23,7 @@
     hoverIndexMap: null,    // 剖面图采样索引 → 原始轨迹点索引 映射(hover 红点联动用)
     layers: { fires: true, quakes: true, buffer: true, contour: false, rain: false },
     quakeData: { items: [], status: 'pending' },
-    fireData: { points: [], status: 'pending', tileUrl: null },
+    fireData: { points: [], status: 'pending' },
     weatherData: null,
     hazardsAlerts: [],
     rainFrames: null,       // RainViewer 帧列表
@@ -157,8 +157,8 @@
    * 3. 图层工具函数 (MapLibre source/layer 管理)
    * ============================================================ */
 
-  /* 自定义图层顺序(自底向上): 底图 < contour < buffer < gibs-fires < fires < quakes < trail < rain */
-  const LAYER_ORDER = ['contour', 'buffer', 'gibs-fires', 'fires', 'quakes', 'trail', 'hover-dot', 'rain-layer'];
+  /* 自定义图层顺序(自底向上): 底图 < contour < buffer < fires < quakes < trail < rain */
+  const LAYER_ORDER = ['contour', 'buffer', 'fires', 'quakes', 'trail', 'hover-dot', 'rain-layer'];
 
   /* 按固定顺序插入图层: 插到 LAYER_ORDER 中下一个已存在图层之下, 保证叠放层级稳定 */
   function addLayerOrdered(layer) {
@@ -199,7 +199,7 @@
 
   /* 图层显隐映射: 一个按钮可能控制多个 MapLibre layer */
   const LAYER_MAP = {
-    fires: ['gibs-fires', 'fires'],
+    fires: ['fires'],
     quakes: ['quakes'],
     buffer: ['buffer'],
     contour: ['contour']
@@ -443,8 +443,8 @@
 
     // 地图渲染 + 灾害检测(等样式就绪)
     whenReady(() => {
-      // 清空旧图层(轨迹/缓冲区/灾害点/GIBS)与 DOM 标记
-      ['trail', 'buffer', 'fires', 'quakes', 'gibs-fires'].forEach((id) => {
+      // 清空旧图层(轨迹/缓冲区/灾害点)与 DOM 标记
+      ['trail', 'buffer', 'fires', 'quakes'].forEach((id) => {
         if (map.getLayer(id)) map.removeLayer(id);
         if (map.getSource(id)) map.removeSource(id);
       });
@@ -548,11 +548,10 @@
     state.fireData = fireRes;
     state.weatherData = weatherRes;
 
-    // 渲染地震/山火图层 + GIBS 热异常瓦片
+    // 渲染地震/山火图层
     renderQuakeLayer(quakeRes.items);
     renderFireLayer(fireRes.points);
-    renderGibsTiles();
-    applyLayerVisibility('fires'); // 同时控制 gibs-fires + fires 的显隐
+    applyLayerVisibility('fires');
 
     // 碰撞检测: 灾害点 vs 缓冲区
     state.hazardsAlerts = Hazards.checkIntersections(
@@ -639,18 +638,6 @@
         'circle-stroke-color': '#ffffff'
       }
     });
-  }
-
-  /* ---------- GIBS 卫星热异常瓦片 (raster source, 位于山火点层之下) ---------- */
-  function renderGibsTiles() {
-    const url = state.fireData.tileUrl;
-    if (!url) return;
-    if (!map.getSource('gibs-fires')) {
-      map.addSource('gibs-fires', { type: 'raster', tiles: [url], tileSize: 256, maxzoom: 8 });
-    }
-    if (!map.getLayer('gibs-fires')) {
-      addLayerOrdered({ id: 'gibs-fires', type: 'raster', source: 'gibs-fires', paint: { 'raster-opacity': 0.85 } });
-    }
   }
 
   /* ---------- 图层点击 popup: 注册一次即可(按 layerId 触发) ---------- */
@@ -1217,7 +1204,7 @@
       const lw = 297, lh = 210, lm = 10;
 
       // 上部: 地图大图(横贯页宽, 左右小边距)
-      // 修复: OpenTopoMap(底图+等高线)/GIBS 瓦片无 CORS 头 → canvas 被污染
+      // 修复: OpenTopoMap(底图+等高线)瓦片无 CORS 头 → canvas 被污染
       //   toDataURL 抛 SecurityError。思路: 截图期间临时隐藏所有无 CORS 图层,
       //   底图切到高德(带 CORS), 等地图 idle(瓦片渲染完成)后再截, 最后恢复。
       let mapImgOk = false;
@@ -1226,7 +1213,7 @@
       // 否则 finally 块引用会抛 ReferenceError → 整个导出降级打印(曾导致 PDF 无地图)
       const tempBasemap = (prevBasemap === 'topo') ? 'amap' : prevBasemap;
       const prevLayerVis = {};
-      const NO_CORS_LAYERS = ['contour', 'gibs-fires', 'rain-layer']; // 无 CORS 头图层
+      const NO_CORS_LAYERS = ['contour', 'rain-layer']; // 无 CORS 头图层
       try {
         // 1) 记录并隐藏无 CORS 图层(等高线/山火瓦片/雨带)
         NO_CORS_LAYERS.forEach((id) => {
@@ -1331,7 +1318,7 @@
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
     // 版本化注册: 新 URL(sw.js?v=17)绕过旧 SW 缓存, 强制更新 SW
-    navigator.serviceWorker.register('sw.js?v=20').then((reg) => {
+    navigator.serviceWorker.register('sw.js?v=21').then((reg) => {
       // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
       // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
       reg.addEventListener('updatefound', () => {
