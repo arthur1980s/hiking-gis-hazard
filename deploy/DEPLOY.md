@@ -26,10 +26,16 @@
 
 ## 更新部署
 ```bash
-cd ~/hiking-gis-hazard && tar czf /tmp/trailsense.tar.gz index.html css js manifest.json sw.js icons
+cd ~/hiking-gis-hazard && tar czf /tmp/trailsense.tar.gz index.html css js manifest.json sw.js icons vendor assets data
 scp -i ~/.ssh/id_ed25519 /tmp/trailsense.tar.gz root@173.242.116.220:/tmp/
-ssh root@173.242.116.220 "cd /var/www/html/trailsense && tar xzf /tmp/trailsense.tar.gz && rm /tmp/trailsense.tar.gz"
+ssh root@173.242.116.220 "cd /var/www/html/trailsense && tar xzf /tmp/trailsense.tar.gz && chown -R root:root . && chmod -R 755 . && rm /tmp/trailsense.tar.gz"
 ```
+> ⚠️ 注意: 打包必须含 `vendor/ assets/ data/`(核心库本地自托管 + 3D glTF + GPX), 漏了会导致线上地图黑屏/3D 失效。
+> 解压后务必 `chown root:root` + `chmod 755`(否则 nginx worker 读不了 → 403)。
+> 版本化: 每次改版需同步 bump 三处 — `sw.js` CACHE_NAME、`app.js` register URL `sw.js?v=N`、`index.html` 资源 `?v=N`。
+
+## 部署记录
+- **2026-08-16 v19** (978f1b4): 浅色主题对比度修复(--on-accent 红底白字/MapLibre 控件主题化) + 移动端 480px 排版 + 移除 localStorage 状态恢复 + PDF 重排(P2 横版纯地图/P3 横版纯图表)。nginx 配置未变(md5 与 deploy/nginx-trailsense.conf 一致)。
 
 ## HTTPS 证书
 - certbot webroot 申请: `/etc/letsencrypt/live/goitex.com/` (Let's Encrypt, 90 天)
