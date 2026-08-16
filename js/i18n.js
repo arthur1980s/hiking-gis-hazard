@@ -132,6 +132,15 @@ const I18N = {
     'popup.fire': '🔥 卫星山火热点',
     'buffer.label': '📡 {km}km 监测区',
 
+    /* PDF 报告 */
+    'report.title': '徒步风险评估报告',
+    'report.stats': '轨迹统计',
+    'report.alerts': '灾害碰撞预警',
+    'report.weather': '微气象与风寒',
+    'report.time': '生成时间: {time}',
+    'report.none': '（无）',
+    'report.notloaded': 'jsPDF 未加载, 已切换为打印模式',
+
     /* Toast 动态消息 */
     'toast.rain.unreachable': '🌧️ 雨带雷达数据源不可达, 已自动关闭',
     'toast.rain.fetching': '🌧️ 正在获取雨带雷达数据...',
@@ -140,6 +149,7 @@ const I18N = {
     'toast.parse.fail': '❌ 解析失败: {msg}',
     'toast.exporting': '⏳ 生成中...',
     'toast.exported': '📄 报告已生成并下载',
+    'toast.restored': '♻️ 已恢复上次分析状态',
     'toast.print': '截图受 WebGL/跨域瓦片影响, 已切换为打印模式 (Ctrl+P 保存 PDF)',
     'toast.sw.reload': '🔄 检测到新版本, 正在刷新...',
     'toast.refresh': '🔄 手动刷新灾害检测...',
@@ -267,6 +277,15 @@ const I18N = {
     'popup.fire': '🔥 Satellite fire hotspot',
     'buffer.label': '📡 {km}km zone',
 
+    /* PDF 报告 */
+    'report.title': 'Hiking Risk Assessment Report',
+    'report.stats': 'Trail Statistics',
+    'report.alerts': 'Hazard Alerts',
+    'report.weather': 'Micro-climate & Wind Chill',
+    'report.time': 'Generated: {time}',
+    'report.none': '(none)',
+    'report.notloaded': 'jsPDF not loaded, falling back to print',
+
     'toast.rain.unreachable': '🌧️ Rain radar unavailable, turned off',
     'toast.rain.fetching': '🌧️ Fetching rain radar data...',
     'toast.rain.on': '🌧️ Rain animation on (next 2h)',
@@ -274,6 +293,7 @@ const I18N = {
     'toast.parse.fail': '❌ Parse failed: {msg}',
     'toast.exporting': '⏳ Generating...',
     'toast.exported': '📄 Report generated & downloaded',
+    'toast.restored': '♻️ Restored last analysis',
     'toast.print': 'Screenshot blocked by WebGL/cross-origin tiles, switched to print (Ctrl+P for PDF)',
     'toast.sw.reload': '🔄 New version detected, refreshing...',
     'toast.refresh': '🔄 Refreshing hazard scan...',

@@ -6,7 +6,7 @@
  *       保证灾害数据始终是实时抓取。
  * ============================================================ */
 
-const CACHE_NAME = 'trail-sense-v4'; // 新增 i18n.js, bump 版本强制刷新缓存
+const CACHE_NAME = 'trail-sense-v5'; // 版本 bump(jsPDF 走 CDN 不入缓存, 保险刷新) // 新增 i18n.js, bump 版本强制刷新缓存
 
 /* 应用壳: 首次访问即离线可用所需的全部本地资源 */
 const APP_SHELL = [

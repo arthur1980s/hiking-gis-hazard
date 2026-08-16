@@ -368,6 +368,7 @@
 
       // 自动触发灾害检测(并发, 不阻塞页面)
       runHazardChecks();
+      saveTrailState(); // 轨迹与统计就绪后先保存一次(预警/气象随后刷新)
     });
   }
 
@@ -459,6 +460,7 @@
     state.lastUpdatedTime = updatedAt; // 供语言切换后重设状态文本
     setDetectStatus(t('status.updated', { time: updatedAt }), false);
     state.detecting = false;
+    saveTrailState(); // 预警/气象更新完成后保存
   }
 
   /* ---------- 地震图层 (circle layer + 点击 popup) ---------- */
@@ -935,7 +937,8 @@
   }
 
   /* ============================================================
-   * 11. 报告导出 (html2canvas 截图 → PNG; 失败降级打印)
+   * 11. 报告导出 (jsPDF A4 多页 PDF: 统计/预警/微气象文本 + 地图/剖面/侧栏截图)
+   *     地图用 MapLibre getCanvas() 直读; 侧栏用 html2canvas; 失败逐级降级打印
    * ============================================================ */
   async function exportReport() {
     const btn = document.getElementById('exportBtn');
@@ -943,27 +946,208 @@
     btn.disabled = true;
     btn.textContent = t('toast.exporting');
     try {
-      if (typeof html2canvas === 'undefined') throw new Error('html2canvas 未加载');
-      const canvas = await html2canvas(document.getElementById('app'), {
-        backgroundColor: '#0a0a0f',
-        scale: Math.min(2, window.devicePixelRatio || 1.5),
-        useCORS: true,
-        logging: false
+      // jsPDF 未加载 → 降级打印
+      if (typeof jspdf === 'undefined') throw new Error('jsPDF 未加载');
+      const { jsPDF } = jspdf;
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+      // 注意: jsPDF 默认字体(Helvetica)不含中文字形, PDF 文本层统一用英文渲染(ASCII 安全);
+      // 中文内容由侧栏 html2canvas 截图完整呈现(像素级, 不受字体限制)
+      const enT = (k, p) => {
+        let v = I18N.en[k];
+        if (v == null) v = I18N.zh[k]; // 英文缺失回退中文(可能乱码, 极少见)
+        if (v == null) return k;
+        if (p) Object.keys(p).forEach((kk) => { v = v.replace(new RegExp('\\{' + kk + '\\}', 'g'), p[kk]); });
+        return v;
+      };
+      const enAlertText = (a) => {
+        if (!a.key) return a.text || '';
+        const p = Object.assign({}, a.params);
+        if (a.key === 'alert.fire' && p.frp) p.frp = enT('alert.fire.frp', { frp: p.frp });
+        return enT(a.key, p);
+      };
+      const pageW = 210, pageH = 297, margin = 12;
+      let y = margin; // 当前页内容游标
+
+      // 剩余空间不足时自动翻页
+      const ensureSpace = (need) => {
+        if (y + need > pageH - margin) { pdf.addPage(); y = margin; }
+      };
+
+      // ---- 标题 + 生成时间 ----
+      pdf.setFontSize(17);
+      pdf.setTextColor(233, 69, 96);
+      pdf.text(enT('report.title'), margin, y); y += 7;
+      pdf.setFontSize(9);
+      pdf.setTextColor(130, 130, 130);
+      const timeStr = new Date().toLocaleString(i18n.getLang() === 'zh' ? 'zh-CN' : 'en-US');
+      pdf.text(enT('report.time', { time: timeStr }), margin, y); y += 7;
+
+      // ---- 1. 轨迹统计(文本) ----
+      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
+      pdf.text(enT('report.stats'), margin, y); y += 6;
+      const statPairs = [
+        ['stat.dist', 'statDistance'], ['stat.ascent', 'statElevation'], ['stat.descent', 'statDescent'],
+        ['stat.maxEle', 'statMaxEle'], ['stat.minEle', 'statMinEle'], ['stat.points', 'statPoints']
+      ];
+      pdf.setFontSize(10); pdf.setTextColor(70, 70, 70);
+      statPairs.forEach(([k, id]) => {
+        ensureSpace(6);
+        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), margin, y);
+        y += 6;
       });
-      const url = canvas.toDataURL('image/png');
-      // 触发下载
-      const a = document.createElement('a');
-      a.download = 'trail-safety-report-' + new Date().toISOString().slice(0, 10) + '.png';
-      a.href = url;
-      a.click();
+      y += 3;
+
+      // ---- 2. 灾害碰撞预警(文本) ----
+      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
+      ensureSpace(8); pdf.text(enT('report.alerts'), margin, y); y += 6;
+      pdf.setFontSize(9); pdf.setTextColor(90, 90, 90);
+      // 预警文本按结构化数据用英文重渲染(与 UI 当前语言解耦, 避免中文字形乱码)
+      const pdfAlerts = [];
+      state.hazardsAlerts.forEach((a) => pdfAlerts.push(enAlertText(a)));
+      if (state.quakeData.i18nKey) pdfAlerts.push(enT(state.quakeData.i18nKey));
+      if (state.fireData.i18nKey) pdfAlerts.push(enT(state.fireData.i18nKey, state.fireData.i18nParams));
+      if (state.weatherData && state.weatherData.i18nKey) pdfAlerts.push(enT(state.weatherData.i18nKey));
+      if (state.rainChecked && !state.rainFrames) pdfAlerts.push(enT('alert.rain.unreachable'));
+      const alertTexts = pdfAlerts.length ? pdfAlerts : [enT('report.none')];
+      alertTexts.forEach((txt) => {
+        const wrapped = pdf.splitTextToSize(txt, pageW - 2 * margin);
+        ensureSpace(wrapped.length * 4 + 2);
+        pdf.text(wrapped, margin, y);
+        y += wrapped.length * 4 + 2;
+      });
+      y += 3;
+
+      // ---- 3. 微气象与风寒(文本) ----
+      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
+      ensureSpace(8); pdf.text(enT('report.weather'), margin, y); y += 6;
+      const wxPairs = [
+        ['wx.peakEle', 'wxPeakEle'], ['wx.temp', 'wxTemp'], ['wx.gust', 'wxGust'], ['wx.uv', 'wxUV'],
+        ['wx.soil', 'wxSoil'], ['wx.wc', 'wxWc'], ['wx.gust6h', 'wxGust6h'], ['wx.wc6h', 'wxWc6h'], ['wx.precip', 'wxPrecip']
+      ];
+      pdf.setFontSize(9); pdf.setTextColor(70, 70, 70);
+      wxPairs.forEach(([k, id]) => {
+        ensureSpace(5);
+        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), margin, y);
+        y += 5;
+      });
+      y += 3;
+
+      // ---- 4. 地图截图(MapLibre WebGL canvas 直读; 跨域瓦片污染时自动跳过) ----
+      try {
+        const mapCanvas = map.getCanvas();
+        const mapImg = mapCanvas.toDataURL('image/png');
+        const imgW = pageW - 2 * margin;
+        const imgH = imgW * (mapCanvas.height / mapCanvas.width);
+        ensureSpace(imgH + 8);
+        pdf.addImage(mapImg, 'PNG', margin, y, imgW, imgH);
+        y += imgH + 6;
+      } catch (e) { /* 地图 canvas 被污染则跳过该图 */ }
+
+      // ---- 5. 海拔剖面(chart canvas) ----
+      try {
+        const chartCanvas = document.getElementById('elevationChart');
+        if (chartCanvas && state.chart) {
+          const img = chartCanvas.toDataURL('image/png');
+          const imgW = pageW - 2 * margin;
+          const imgH = imgW * (chartCanvas.height / chartCanvas.width);
+          ensureSpace(imgH + 8);
+          pdf.addImage(img, 'PNG', margin, y, imgW, imgH);
+          y += imgH + 6;
+        }
+      } catch (e) { /* 剖面截图失败则跳过 */ }
+
+      // ---- 6. 侧栏 html2canvas 截图(长图分片插入, 自动分页) ----
+      try {
+        if (typeof html2canvas === 'undefined') throw new Error('html2canvas 未加载');
+        const panelCanvas = await html2canvas(document.getElementById('sidePanel'), {
+          backgroundColor: '#0a0a0f', scale: 1.5, useCORS: true, logging: false
+        });
+        const imgW = pageW - 2 * margin;
+        const imgH = imgW * (panelCanvas.height / panelCanvas.width);
+        const availH = pageH - margin - margin;
+        let offY = 0;
+        while (offY < imgH - 0.5) {
+          const sliceH = Math.min(availH, imgH - offY);
+          // 从完整画布裁剪一段, 避免长图直接 addImage 溢出页面
+          const slice = document.createElement('canvas');
+          slice.width = panelCanvas.width;
+          slice.height = Math.max(1, Math.round(panelCanvas.height * (sliceH / imgH)));
+          slice.getContext('2d').drawImage(
+            panelCanvas, 0, Math.round(panelCanvas.height * (offY / imgH)),
+            slice.width, slice.height, 0, 0, slice.width, slice.height
+          );
+          ensureSpace(sliceH);
+          pdf.addImage(slice.toDataURL('image/png'), 'PNG', margin, y, imgW, sliceH);
+          y += sliceH;
+          offY += sliceH;
+        }
+      } catch (e) { /* 侧栏截图失败则跳过(文本摘要已覆盖) */ }
+
+      // ---- 保存 PDF ----
+      pdf.save('TravelerGuide_Report.pdf');
       showToast(t('toast.exported'));
     } catch (e) {
-      // MapLibre 的 WebGL canvas 通常无法被 html2canvas 读取(跨域纹理污染) → 降级为打印
-      showToast(t('toast.print'));
+      // jsPDF 缺失或致命错误 → 降级为浏览器打印
+      showToast(t('report.notloaded'));
       window.print();
     } finally {
       btn.disabled = false;
       btn.textContent = t('export.btn');
+    }
+  }
+
+  /* ============================================================
+   * 11.5 数据持久化: localStorage 保存/恢复上次分析状态
+   * ============================================================ */
+  const STATE_KEY = 'travelerTrailState';
+  const MAX_POINTS_JSON = 3 * 1024 * 1024; // 轨迹点 JSON 超 3MB 时只存元数据
+
+  /* 保存当前分析状态(轨迹点/预警/气象/统计/缓冲半径/语言/时间戳) */
+  function saveTrailState() {
+    try {
+      if (!state.points || !state.points.length) return;
+      const payload = {
+        v: 1,
+        savedAt: Date.now(),
+        trailName: state.trailName || '',
+        bufferRadius: getBufferRadius(),
+        lang: (function () { try { return localStorage.getItem('lang') || 'zh'; } catch (e) { return 'zh'; } })(),
+        points: state.points,
+        alerts: state.hazardsAlerts || [],
+        weather: state.weatherData || null,
+        stats: {
+          dist: document.getElementById('statDistance') ? document.getElementById('statDistance').textContent : '--',
+          ascent: document.getElementById('statElevation') ? document.getElementById('statElevation').textContent : '--',
+          descent: document.getElementById('statDescent') ? document.getElementById('statDescent').textContent : '--',
+          maxEle: document.getElementById('statMaxEle') ? document.getElementById('statMaxEle').textContent : '--',
+          minEle: document.getElementById('statMinEle') ? document.getElementById('statMinEle').textContent : '--',
+          points: document.getElementById('statPoints') ? document.getElementById('statPoints').textContent : '--'
+        }
+      };
+      let json = JSON.stringify(payload);
+      // 轨迹点过大(localStorage 5MB 限制) → 丢弃轨迹点, 仅保留元数据
+      if (json.length > MAX_POINTS_JSON) {
+        delete payload.points;
+        payload.pointsOmitted = true;
+        json = JSON.stringify(payload);
+      }
+      localStorage.setItem(STATE_KEY, json);
+    } catch (e) {
+      console.warn('分析状态保存失败:', e);
+    }
+  }
+
+  /* 读取上次保存的分析状态; 无效(无轨迹点)时返回 null */
+  function restoreTrailState() {
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || !data.points || !data.points.length) return null;
+      return data;
+    } catch (e) {
+      console.warn('分析状态恢复失败:', e);
+      return null;
     }
   }
 
@@ -1080,10 +1264,35 @@
 
     registerSW();
 
-    // 自动加载雨崩徒步示例并触发检测(等地图样式加载完成)
+    // 启动: 优先恢复上次分析状态; 无存档则加载默认雨崩示例
     setTimeout(() => {
-      loadYubeng();
-      showToast(t('toast.yubeng'));
+      const saved = restoreTrailState();
+      if (saved) {
+        // 先恢复已保存的预警/气象(立即展示), 再加载轨迹并刷新检测
+        state.hazardsAlerts = saved.alerts || [];
+        state.weatherData = saved.weather || null;
+        if (saved.bufferRadius) {
+          const sel = document.getElementById('bufferRadius');
+          if (sel && ['5', '10', '20', '30'].indexOf(String(saved.bufferRadius)) !== -1) sel.value = saved.bufferRadius;
+        }
+        if (saved.lang && i18n.getLang() !== saved.lang) i18n.setLang(saved.lang); // 恢复语言偏好
+        updateRiskPanel();
+        updateWeatherPanel();
+        loadTrail(saved.points, saved.trailName || '');
+        // 统计以保存值为准(loadTrail 会重算, 双保险)
+        if (saved.stats) {
+          setText('statDistance', saved.stats.dist);
+          setText('statElevation', saved.stats.ascent);
+          setText('statDescent', saved.stats.descent);
+          setText('statMaxEle', saved.stats.maxEle);
+          setText('statMinEle', saved.stats.minEle);
+          setText('statPoints', saved.stats.points);
+        }
+        showToast(t('toast.restored'));
+      } else {
+        loadYubeng();
+        showToast(t('toast.yubeng'));
+      }
     }, 400);
   }
 
