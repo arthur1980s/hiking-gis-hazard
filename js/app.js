@@ -102,6 +102,50 @@
   // 导航控件(右上角)
   map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
+  /* ============================================================
+   * 右上角图层控件(弹出式): 注册进 .maplibregl-ctrl-top-right,
+   * 位于缩放控件(+/-)下方; 点击 🗺️ 弹出/收起 .map-overlay-controls 面板。
+   * 面板按钮(底图/图层/3D)的事件已由 querySelectorAll('[data-basemap]') 等
+   * 在 DOM 上绑定, 移动位置不影响; 点击面板外区域自动收起。
+   * ============================================================ */
+  const overlayPanel = document.getElementById('overlayPanel');
+  if (overlayPanel) {
+    const closePanel = () => overlayPanel.classList.remove('open');
+    const layersCtrl = {
+      onAdd() {
+        const container = document.createElement('div');
+        container.className = 'maplibregl-ctrl maplibregl-ctrl-group layers-ctrl';
+        // 图层开关按钮(图标 + i18n title)
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.id = 'layersToggle';
+        toggle.className = 'layers-toggle';
+        toggle.setAttribute('data-i18n-title', 'layers.toggle.title');
+        toggle.title = t('layers.toggle.title');
+        toggle.textContent = '🗺️';
+        // 把面板移入控件容器(位于缩放控件下方)
+        container.appendChild(toggle);
+        container.appendChild(overlayPanel);
+        // 开关: 点击 toggle 切换, 阻止冒泡避免被外层关闭逻辑立即收起
+        toggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          overlayPanel.classList.toggle('open');
+        });
+        // 点击面板内部不关闭(按钮事件本身已被绑定, 此处仅防关闭)
+        overlayPanel.addEventListener('click', (e) => e.stopPropagation());
+        // 点击页面其他区域收起
+        document.addEventListener('click', (e) => {
+          if (!container.contains(e.target)) closePanel();
+        });
+        return container;
+      },
+      onRemove() {
+        if (overlayPanel.parentNode) overlayPanel.parentNode.removeChild(overlayPanel);
+      }
+    };
+    map.addControl(layersCtrl, 'top-right');
+  }
+
   /* 地图状态栏: 鼠标坐标 + 缩放级别 (MapLibre 事件对象用 e.lngLat) */
   map.on('mousemove', (e) => {
     document.getElementById('mapStatusbar').textContent =
@@ -1075,6 +1119,38 @@
         if (y + need > pageH - margin) { pdf.addPage(); y = margin; }
       };
 
+      /* 卡片 html2canvas 截图 → 缩放适配一页(避免内容被侧栏滚动裁切, 背景随主题) */
+      const addCardScreenshot = async (pdf, sel) => {
+        if (typeof html2canvas === 'undefined') throw new Error('html2canvas 未加载');
+        const head = document.querySelector(sel);
+        const card = head ? head.closest('.card') : null;
+        const fallbackText = (key) => {
+          pdf.setFontSize(10); pdf.setTextColor(160, 160, 160);
+          pdf.text((I18N.en[key] || key) + ' unavailable', margin, margin + 8);
+        };
+        if (!card) { fallbackText(sel.indexOf('wx.card') !== -1 ? 'wx.card' : 'hazard.card'); return; }
+        // 临时放开侧栏内部滚动裁切(预警列表 max-height 等), 截图后恢复
+        const restore = [];
+        document.querySelectorAll('#sidePanel .alert-list, #sidePanel .view-panel').forEach((el) => {
+          restore.push({ el, mh: el.style.maxHeight, ov: el.style.overflow });
+          el.style.maxHeight = 'none';
+          el.style.overflow = 'visible';
+        });
+        try {
+          const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+          const bg = isLight ? '#f5f6fa' : '#0a0a0f'; // 截图背景与当前主题一致
+          const canvas = await html2canvas(card, { backgroundColor: bg, scale: 1.5, useCORS: true, logging: false });
+          const imgW = pageW - 2 * margin;
+          const imgH = imgW * (canvas.height / canvas.width);
+          const availH = pageH - 2 * margin;
+          const scale = imgH > availH ? availH / imgH : 1; // 超页则整体缩小, 保持完整可见
+          const w = imgW * scale, h = imgH * scale;
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin + (imgW - w) / 2, margin + (availH - h) / 2, w, h);
+        } finally {
+          restore.forEach((r) => { r.el.style.maxHeight = r.mh; r.el.style.overflow = r.ov; });
+        }
+      };
+
       // ---- 标题 + 生成时间 ----
       pdf.setFontSize(17);
       pdf.setTextColor(233, 69, 96);
@@ -1083,6 +1159,58 @@
       pdf.setTextColor(130, 130, 130);
       const timeStr = new Date().toLocaleString(i18n.getLang() === 'zh' ? 'zh-CN' : 'en-US');
       pdf.text(enT('report.time', { time: timeStr }), margin, y); y += 7;
+
+      // ---- 第 1 页: 摘要页(标题 + 生成时间 + 统计 + 预警 + 微气象文本) ----
+      // ---- 1. 轨迹统计(文本) ----
+      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
+      pdf.text(enT('report.stats'), margin, y); y += 6;
+      const statPairs = [
+        ['stat.dist', 'statDistance'], ['stat.ascent', 'statElevation'], ['stat.descent', 'statDescent'],
+        ['stat.maxEle', 'statMaxEle'], ['stat.minEle', 'statMinEle'], ['stat.points', 'statPoints']
+      ];
+      pdf.setFontSize(10); pdf.setTextColor(70, 70, 70);
+      statPairs.forEach(([k, id]) => {
+        ensureSpace(6);
+        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), margin, y);
+        y += 6;
+      });
+      y += 3;
+
+      // ---- 2. 灾害碰撞预警(文本) ----
+      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
+      ensureSpace(8); pdf.text(enT('report.alerts'), margin, y); y += 6;
+      pdf.setFontSize(9); pdf.setTextColor(90, 90, 90);
+      // 预警文本按结构化数据用英文重渲染(与 UI 当前语言解耦, 避免中文字形乱码)
+      const pdfAlerts = [];
+      state.hazardsAlerts.forEach((a) => pdfAlerts.push(enAlertText(a)));
+      if (state.quakeData.i18nKey) pdfAlerts.push(enT(state.quakeData.i18nKey));
+      if (state.fireData.i18nKey) pdfAlerts.push(enT(state.fireData.i18nKey, state.fireData.i18nParams));
+      if (state.weatherData && state.weatherData.i18nKey) pdfAlerts.push(enT(state.weatherData.i18nKey));
+      if (state.rainChecked && !state.rainFrames) pdfAlerts.push(enT('alert.rain.unreachable'));
+      const alertTexts = pdfAlerts.length ? pdfAlerts : [enT('report.none')];
+      alertTexts.forEach((txt) => {
+        const wrapped = pdf.splitTextToSize(txt, pageW - 2 * margin);
+        ensureSpace(wrapped.length * 4 + 2);
+        pdf.text(wrapped, margin, y);
+        y += wrapped.length * 4 + 2;
+      });
+      y += 3;
+
+      // ---- 3. 微气象与风寒(文本) ----
+      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
+      ensureSpace(8); pdf.text(enT('report.weather'), margin, y); y += 6;
+      const wxPairs = [
+        ['wx.peakEle', 'wxPeakEle'], ['wx.temp', 'wxTemp'], ['wx.gust', 'wxGust'], ['wx.uv', 'wxUV'],
+        ['wx.soil', 'wxSoil'], ['wx.wc', 'wxWc'], ['wx.gust6h', 'wxGust6h'], ['wx.wc6h', 'wxWc6h'], ['wx.precip', 'wxPrecip']
+      ];
+      pdf.setFontSize(9); pdf.setTextColor(70, 70, 70);
+      wxPairs.forEach(([k, id]) => {
+        ensureSpace(5);
+        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), margin, y);
+        y += 5;
+      });
+      y += 3;
+
 
       // ---- 第 2 页: 横向, 只显示地图大图(填满页宽, 上下留边距) ----
       pdf.addPage('a4', 'l'); // 横向 A4: 297 × 210 mm (jsPDF 签名: addPage(format, orientation))
@@ -1163,92 +1291,13 @@
         pdf.text('Elevation chart unavailable', lm, lm + 8);
       }
 
-      // ---- 第 4 页: 纵向, 统计+预警+微气象文本摘要(原第 1 页内容顺延至此) ----
+      // ---- 第 4 页: 灾害检测卡片截图(html2canvas, 整卡片缩放适配一页) ----
       pdf.addPage('a4', 'p');
-      y = margin;
-      pdf.setFontSize(16); pdf.setTextColor(233, 69, 96);
-      pdf.text(enT('report.title'), margin, y); y += 7;
-      pdf.setFontSize(9); pdf.setTextColor(130, 130, 130);
-      pdf.text(enT('report.time', { time: timeStr }), margin, y); y += 7;
+      await addCardScreenshot(pdf, '[data-i18n="hazard.card"]');
 
-      // ---- 1. 轨迹统计(文本) ----
-      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
-      pdf.text(enT('report.stats'), margin, y); y += 6;
-      const statPairs = [
-        ['stat.dist', 'statDistance'], ['stat.ascent', 'statElevation'], ['stat.descent', 'statDescent'],
-        ['stat.maxEle', 'statMaxEle'], ['stat.minEle', 'statMinEle'], ['stat.points', 'statPoints']
-      ];
-      pdf.setFontSize(10); pdf.setTextColor(70, 70, 70);
-      statPairs.forEach(([k, id]) => {
-        ensureSpace(6);
-        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), margin, y);
-        y += 6;
-      });
-      y += 3;
-
-      // ---- 2. 灾害碰撞预警(文本) ----
-      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
-      ensureSpace(8); pdf.text(enT('report.alerts'), margin, y); y += 6;
-      pdf.setFontSize(9); pdf.setTextColor(90, 90, 90);
-      // 预警文本按结构化数据用英文重渲染(与 UI 当前语言解耦, 避免中文字形乱码)
-      const pdfAlerts = [];
-      state.hazardsAlerts.forEach((a) => pdfAlerts.push(enAlertText(a)));
-      if (state.quakeData.i18nKey) pdfAlerts.push(enT(state.quakeData.i18nKey));
-      if (state.fireData.i18nKey) pdfAlerts.push(enT(state.fireData.i18nKey, state.fireData.i18nParams));
-      if (state.weatherData && state.weatherData.i18nKey) pdfAlerts.push(enT(state.weatherData.i18nKey));
-      if (state.rainChecked && !state.rainFrames) pdfAlerts.push(enT('alert.rain.unreachable'));
-      const alertTexts = pdfAlerts.length ? pdfAlerts : [enT('report.none')];
-      alertTexts.forEach((txt) => {
-        const wrapped = pdf.splitTextToSize(txt, pageW - 2 * margin);
-        ensureSpace(wrapped.length * 4 + 2);
-        pdf.text(wrapped, margin, y);
-        y += wrapped.length * 4 + 2;
-      });
-      y += 3;
-
-      // ---- 3. 微气象与风寒(文本) ----
-      pdf.setFontSize(12); pdf.setTextColor(30, 30, 30);
-      ensureSpace(8); pdf.text(enT('report.weather'), margin, y); y += 6;
-      const wxPairs = [
-        ['wx.peakEle', 'wxPeakEle'], ['wx.temp', 'wxTemp'], ['wx.gust', 'wxGust'], ['wx.uv', 'wxUV'],
-        ['wx.soil', 'wxSoil'], ['wx.wc', 'wxWc'], ['wx.gust6h', 'wxGust6h'], ['wx.wc6h', 'wxWc6h'], ['wx.precip', 'wxPrecip']
-      ];
-      pdf.setFontSize(9); pdf.setTextColor(70, 70, 70);
-      wxPairs.forEach(([k, id]) => {
-        ensureSpace(5);
-        pdf.text(enT(k) + ': ' + (document.getElementById(id) ? document.getElementById(id).textContent : '--'), margin, y);
-        y += 5;
-      });
-      y += 3;
-      // ---- 第 3 页起: 侧栏 html2canvas 截图(纵向页, 长图分片插入, 自动分页) ----
-      pdf.addPage('a4', 'p'); // 回到纵向
-      y = margin;
-      try {
-        if (typeof html2canvas === 'undefined') throw new Error('html2canvas 未加载');
-        const panelCanvas = await html2canvas(document.getElementById('sidePanel'), {
-          backgroundColor: '#0a0a0f', scale: 1.5, useCORS: true, logging: false
-        });
-        const imgW = pageW - 2 * margin;
-        const imgH = imgW * (panelCanvas.height / panelCanvas.width);
-        const availH = pageH - margin - margin;
-        let offY = 0;
-        while (offY < imgH - 0.5) {
-          const sliceH = Math.min(availH, imgH - offY);
-          // 从完整画布裁剪一段, 避免长图直接 addImage 溢出页面
-          const slice = document.createElement('canvas');
-          slice.width = panelCanvas.width;
-          slice.height = Math.max(1, Math.round(panelCanvas.height * (sliceH / imgH)));
-          slice.getContext('2d').drawImage(
-            panelCanvas, 0, Math.round(panelCanvas.height * (offY / imgH)),
-            slice.width, slice.height, 0, 0, slice.width, slice.height
-          );
-          ensureSpace(sliceH);
-          pdf.addImage(slice.toDataURL('image/png'), 'PNG', margin, y, imgW, sliceH);
-          y += sliceH;
-          offY += sliceH;
-        }
-      } catch (e) { /* 侧栏截图失败则跳过(文本摘要已覆盖) */ }
-
+      // ---- 第 5 页: 微气象卡片截图(同上适配一页) ----
+      pdf.addPage('a4', 'p');
+      await addCardScreenshot(pdf, '[data-i18n="wx.card"]');
       // ---- 保存 PDF ----
       pdf.save('TravelerGuide_Report.pdf');
       showToast(t('toast.exported'));
@@ -1282,7 +1331,7 @@
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
     // 版本化注册: 新 URL(sw.js?v=17)绕过旧 SW 缓存, 强制更新 SW
-    navigator.serviceWorker.register('sw.js?v=19').then((reg) => {
+    navigator.serviceWorker.register('sw.js?v=20').then((reg) => {
       // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
       // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
       reg.addEventListener('updatefound', () => {

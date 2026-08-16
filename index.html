@@ -11,7 +11,7 @@
     <title>🏔️ Traveler Guide · 你好啊旅行者</title>
 
     <!-- ===== PWA ===== -->
-    <link rel="manifest" href="manifest.json?v=19" />
+    <link rel="manifest" href="manifest.json?v=20" />
     <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
     <link rel="apple-touch-icon" href="icons/icon.svg" />
 
@@ -45,7 +45,7 @@
     </script>
 
     <!-- ===== 本地样式 ===== -->
-    <link rel="stylesheet" href="css/style.css?v=19" />
+    <link rel="stylesheet" href="css/style.css?v=20" />
 </head>
 <body>
 
@@ -98,8 +98,8 @@
         <div class="map-wrapper">
             <div id="map"></div>
 
-            <!-- 底部浮层控制按钮组 -->
-            <div class="map-overlay-controls">
+            <!-- 图层/底图控制面板(默认隐藏, 由 JS 移入右上角控件容器, 点击图层面板按钮弹出) -->
+            <div class="map-overlay-controls" id="overlayPanel">
                 <button data-basemap="amap" data-i18n-title="map.amap.title" title="高德矢量地图(大陆稳定)">🗺️ <span data-i18n="map.amap">高德</span></button>
                 <button class="active" data-basemap="topo" data-i18n-title="map.topo.title" title="OpenTopoMap 地形图">🗺️ <span data-i18n="map.topo">地形</span></button>
                 <button data-basemap="satellite" data-i18n-title="map.satellite.title" title="Esri 卫星影像">🛰️ <span data-i18n="map.satellite">卫星</span></button>
@@ -240,10 +240,10 @@
 <div id="toast"></div>
 
 <!-- ===== 本地 JS: 依赖顺序 i18n → geo → hazards → weather → app ===== -->
-<script src="js/i18n.js?v=19"></script>
-<script src="js/geo.js?v=19"></script>
-<script src="js/hazards.js?v=19"></script>
-<script src="js/weather.js?v=19"></script>
-<script src="js/app.js?v=19"></script>
+<script src="js/i18n.js?v=20"></script>
+<script src="js/geo.js?v=20"></script>
+<script src="js/hazards.js?v=20"></script>
+<script src="js/weather.js?v=20"></script>
+<script src="js/app.js?v=20"></script>
 </body>
 </html>

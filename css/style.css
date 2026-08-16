@@ -238,45 +238,71 @@ body {
 
 .leaflet-popup-content { font-size: 12px; }
 
-/* ===================== 底部浮层按钮组 ===================== */
-.map-overlay-controls {
-    position: absolute;
-    bottom: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    z-index: 500;
-    background: var(--control-bar-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 10px 16px;
-    border-radius: 40px;
-    border: 1px solid var(--border-2);
-    box-shadow: 0 8px 24px var(--control-bar-bg);
-    max-width: 92%;
+/* ===================== 右上角图层控件(弹出式面板, 位于缩放控件下方) ===================== */
+/* 由 app.js 的 map.addControl 注册进 .maplibregl-ctrl-top-right, 天然在缩放控件之后 */
+.layers-ctrl {
+    position: relative;
+    padding: 2px;
 }
 
-.map-overlay-controls .sep {
-    width: 1px;
-    height: 20px;
-    background: var(--border-3);
+/* 图层开关按钮: 与 MapLibre 控件一致的方块按钮风格 */
+.layers-ctrl .layers-toggle {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-bg);
+    border: none;
+    border-radius: 4px;
+    color: var(--text-btn);
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
 }
+
+.layers-ctrl .layers-toggle:hover { background: var(--btn-bg); color: var(--text-strong); }
+
+/* 弹出面板: 默认隐藏, .open 时显示; 两列网格, 不溢出屏幕 */
+.map-overlay-controls {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 500;
+    display: none;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+    padding: 10px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-2);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    max-width: min(280px, 88vw);
+    max-height: 68vh;
+    overflow-y: auto;
+}
+
+.map-overlay-controls.open { display: grid; }
+
+/* 面板内的分隔线在网格布局中无意义, 隐藏 */
+.map-overlay-controls .sep { display: none; }
 
 .map-overlay-controls button {
     background: var(--btn-bg);
     border: none;
     color: var(--text-btn);
-    padding: 6px 13px;
-    border-radius: 30px;
+    padding: 8px 10px;
+    border-radius: 8px;
     font-size: 12px;
     cursor: pointer;
     transition: 0.25s;
     font-weight: 500;
     font-family: inherit;
+    text-align: left;
+    white-space: nowrap;
 }
 
 .map-overlay-controls button:hover {
@@ -879,9 +905,8 @@ details.firms-settings summary:hover { color: var(--accent); }
     .side-panel { padding: 10px 8px; max-height: 50vh; }
     .side-panel .card { padding: 12px; }
     .card-title { font-size: 11px; }
-    .map-overlay-controls { bottom: 6px; left: 4%; right: 4%; transform: none; padding: 6px 8px; gap: 5px; border-radius: 18px; max-width: none; }
-    .map-overlay-controls button { font-size: 11px; padding: 8px 10px; min-height: 38px; }
-    .map-overlay-controls .sep { display: none; }
+    .map-overlay-controls { padding: 8px; gap: 5px; max-width: min(260px, 88vw); max-height: 60vh; border-radius: 10px; }
+    .map-overlay-controls button { font-size: 11px; padding: 9px 8px; min-height: 38px; }
     .wx-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }
     .wx-item { padding: 6px 1px; }
     .wx-item .num { font-size: 12px; }

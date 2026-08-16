@@ -21,6 +21,8 @@ const I18N = {
     'risk.safe': '综合风险: 安全',
     'export.btn': '📄 导出报告',
 
+    /* 图层控件 */
+    'layers.toggle.title': '图层与底图切换',
     /* 左侧导航 */
     'nav.hike': 'Hike',
     'nav.hike.title': 'Hike · 徒步态势感知',
@@ -194,6 +196,7 @@ const I18N = {
     'risk.safe': 'Risk: SAFE',
     'export.btn': '📄 Export Report',
 
+    'layers.toggle.title': 'Layers & Basemap',
     'nav.hike': 'Hike',
     'nav.hike.title': 'Hike · Trail Awareness',
     'nav.discover': 'Discover',
