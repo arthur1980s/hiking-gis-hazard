@@ -1123,11 +1123,16 @@
       let yL = lm + 8, yR = lm + 8;
 
       // 上部: 地图大图(横贯页宽, 左右小边距)
-      // 修复: 先强制重绘并等待(WebGL preserveDrawingBuffer 保证缓冲可读), 失败不静默丢失
+      // 修复: ①先强制重绘并等待(WebGL preserveDrawingBuffer 保证缓冲可读)
+      //       ②OpenTopoMap 瓦片无 CORS 头 → canvas 被污染 toDataURL 抛错,
+      //         截图前临时切到带 CORS 的高德底图, 截完恢复原底图
       let mapImgOk = false;
+      const prevBasemap = currentBasemap;
+      const tempBasemap = (prevBasemap === 'topo') ? 'amap' : prevBasemap; // 地形无CORS→切高德
       try {
+        if (tempBasemap !== prevBasemap) switchBasemap(tempBasemap);
         map.triggerRepaint(); // 强制重绘, 确保最新帧写入缓冲
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 500));
         const mapCanvas = map.getCanvas();
         const mapImg = mapCanvas.toDataURL('image/png');
         const mw = lw - 2 * lm;
@@ -1142,6 +1147,9 @@
         pdf.setFontSize(10); pdf.setTextColor(160, 160, 160);
         pdf.text('Map image unavailable (canvas tainted)', lm, lm + 8);
         yL = lm + 14; yR = lm + 14;
+      } finally {
+        // 恢复原底图(地形/用户选择的底图)
+        if (tempBasemap !== prevBasemap) switchBasemap(prevBasemap);
       }
 
       // ---- 左栏: 路线概况(海拔剖面图 + 轨迹统计) ----
@@ -1298,8 +1306,8 @@
     if (!('serviceWorker' in navigator)) return;
     const proto = location.protocol;
     if (proto !== 'https:' && proto !== 'http:') return; // file:// 跳过
-    // 版本化注册: 新 URL(sw.js?v=13)绕过旧 SW 缓存, 强制更新 SW
-    navigator.serviceWorker.register('sw.js?v=13').then((reg) => {
+    // 版本化注册: 新 URL(sw.js?v=14)绕过旧 SW 缓存, 强制更新 SW
+    navigator.serviceWorker.register('sw.js?v=14').then((reg) => {
       // 检测到新版本 SW(如 CACHE_NAME bump 后) → 自动刷新加载新版资源,
       // 解决"改版后浏览器一直显示旧缓存"的问题(2026-08-16)
       reg.addEventListener('updatefound', () => {
